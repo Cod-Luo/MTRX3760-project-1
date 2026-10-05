@@ -39,7 +39,8 @@ Turtlebot3Drive::Turtlebot3Drive()
   auto qos = rclcpp::QoS(rclcpp::KeepLast(10));
 
   // Initialise publishers
-  cmd_vel_pub_ = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", qos);
+  cmd_vel_pub_ =
+  this->create_publisher<geometry_msgs::msg::TwistStamped>("cmd_vel", qos);
 
   // Initialise subscribers
   scan_sub_ = this->create_subscription<sensor_msgs::msg::LaserScan>(
@@ -97,9 +98,11 @@ void Turtlebot3Drive::scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr
 
 void Turtlebot3Drive::update_cmd_vel(double linear, double angular)
 {
-  geometry_msgs::msg::Twist cmd_vel;
-  cmd_vel.linear.x = linear;
-  cmd_vel.angular.z = angular;
+  geometry_msgs::msg::TwistStamped cmd_vel;
+
+  cmd_vel.header.stamp = this->now();
+  cmd_vel.twist.linear.x = linear;
+  cmd_vel.twist.angular.z = angular;
 
   cmd_vel_pub_->publish(cmd_vel);
 }
