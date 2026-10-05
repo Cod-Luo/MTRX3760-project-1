@@ -1,0 +1,23 @@
+{
+  "elapsed_seconds": 381.50619400000005,
+  "laser_messages": 1527,
+  "camera_messages": 3590,
+  "camera_dimensions": [
+    640,
+    480
+  ],
+  "recorded_path_poses": 1523,
+  "final_world_pose": [
+    4.000381575579881,
+    2.008779176522022
+  ],
+  "odometry_inferred_final_pose": [
+    3.039967428343878,
+    2.903843597079221
+  ],
+  "ground_truth_messages": 14414,
+  "ground_truth_error": null,
+  "maze_exit_reached": true,
+  "note": "Exit and ground-truth.csv use Gazebo model poses. trajectory.csv and the RViz path use drifting wheel odometry. The controller receives neither ground truth nor maze coordinates.",
+  "runtime_checks_passed": true
+}

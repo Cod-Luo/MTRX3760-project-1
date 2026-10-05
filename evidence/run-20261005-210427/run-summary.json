@@ -1,0 +1,17 @@
+{
+  "elapsed_seconds": 341.2809103899999,
+  "laser_messages": 1657,
+  "camera_messages": 4160,
+  "camera_dimensions": [
+    640,
+    480
+  ],
+  "recorded_path_poses": 1475,
+  "final_world_pose": [
+    4.100958650559824,
+    2.5479936371692338
+  ],
+  "maze_exit_reached": true,
+  "note": "Start observer before driving; inferred world pose assumes the supplied spawn pose and yaw.",
+  "runtime_checks_passed": true
+}

@@ -1,0 +1,69 @@
+{
+  "label": "Branched maze: right branch, dead end and return",
+  "world": "project1_branched",
+  "spawn": [
+    -2.8,
+    -0.4,
+    0.0
+  ],
+  "exit": [
+    1.6,
+    2.6,
+    2.8,
+    3.3
+  ],
+  "plot_bounds": [
+    -4.0,
+    4.0,
+    -4.5,
+    3.5
+  ],
+  "checkpoints": [
+    {
+      "name": "junction_approach",
+      "bounds": [
+        -1.6,
+        -0.9,
+        -0.7,
+        0.7
+      ]
+    },
+    {
+      "name": "right_branch",
+      "bounds": [
+        -0.7,
+        0.7,
+        -2.4,
+        -1.7
+      ]
+    },
+    {
+      "name": "dead_end",
+      "bounds": [
+        -0.7,
+        0.7,
+        -3.7,
+        -3.1
+      ]
+    },
+    {
+      "name": "returned_from_dead_end",
+      "bounds": [
+        -0.7,
+        0.7,
+        -1.2,
+        -0.2
+      ]
+    },
+    {
+      "name": "exit_corridor",
+      "bounds": [
+        1.0,
+        2.3,
+        1.9,
+        2.7
+      ]
+    }
+  ],
+  "name": "branched"
+}

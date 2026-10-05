@@ -1,0 +1,9 @@
+{
+  "ground_truth_samples": 2668,
+  "minimum_robot_origin_to_wall_surface_m": 0.2825323474197468,
+  "first_corridor_east_end_visited": true,
+  "middle_corridor_west_end_visited": true,
+  "upper_corridor_visited": true,
+  "ground_truth_exit_reached": true,
+  "note": "Clearance is for the model origin, not the complete robot footprint; no collision-free-body claim is inferred from this alone."
+}
