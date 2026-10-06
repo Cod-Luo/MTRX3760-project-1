@@ -7,5 +7,5 @@ export ROS_DOMAIN_ID=76
 unset ROS_LOCALHOST_ONLY
 export ROS_AUTOMATIC_DISCOVERY_RANGE=LOCALHOST
 export GZ_PARTITION=mtrx3760_project1_76
-export TURTLEBOT3_MODEL=waffle_pi
+export TURTLEBOT3_MODEL=burger
 exec "$@"

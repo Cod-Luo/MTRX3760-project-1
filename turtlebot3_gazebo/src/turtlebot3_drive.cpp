@@ -14,98 +14,166 @@
 //
 // Authors: Taehun Lim (Darby), Ryan Shim
 
-// Modified for MTRX3760 Project 1: steering and trajectory recording.
+// turtlebot3_drive.cpp - ROS communication, controller updates and path recording.
+
 #include "turtlebot3_gazebo/turtlebot3_drive.hpp"
 
 #include <algorithm>
-#include <exception>
+#include <functional>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <memory>
 #include <rclcpp/create_timer.hpp>
 
+// Configure the controller and connect its inputs and outputs to ROS.
 Turtlebot3Drive::Turtlebot3Drive()
     : Node("turtlebot3_drive_node"),
       mWallFollower(ReadSettings()),
-      mUseStampedVelocity(declare_parameter<bool>("use_stamped_velocity", true)),
+      mUseStampedVelocity(
+          declare_parameter<bool>("use_stamped_velocity", true)),
       mLastScan(std::chrono::steady_clock::now()),
       mLastScanStamp(0, 0, get_clock()->get_clock_type()),
       mLastPathSample(0, 0, get_clock()->get_clock_type())
 {
+    if (!mWallFollower.HasValidSettings())
+    {
+        RCLCPP_ERROR(
+            get_logger(),
+            "Invalid wall-follower settings; motion disabled");
+    }
+
+    // Create only the velocity publisher selected for this robot setup.
     if (mUseStampedVelocity)
     {
-        mStampedPublisher = create_publisher<geometry_msgs::msg::TwistStamped>("cmd_vel", 10);
+        mStampedPublisher =
+            create_publisher<geometry_msgs::msg::TwistStamped>(
+                "cmd_vel", 10);
     }
     else
     {
-        mVelocityPublisher = create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
+        mVelocityPublisher =
+            create_publisher<geometry_msgs::msg::Twist>(
+                "cmd_vel", 10);
     }
 
-    mPathPublisher = create_publisher<nav_msgs::msg::Path>("wall_follower/path",
+    // Each message contains the complete path, so retain the latest message.
+    mPathPublisher = create_publisher<nav_msgs::msg::Path>(
+        "wall_follower/path",
         rclcpp::QoS(1).reliable().transient_local());
-    mScanSubscriber = create_subscription<sensor_msgs::msg::LaserScan>("scan",
+
+    mScanSubscriber = create_subscription<sensor_msgs::msg::LaserScan>(
+        "scan",
         rclcpp::SensorDataQoS(),
-        [this](const sensor_msgs::msg::LaserScan::SharedPtr aMessage)
-        {
-            ScanCallback(aMessage);
-        });
-    mOdometrySubscriber = create_subscription<nav_msgs::msg::Odometry>("odom",
+        std::bind(
+            &Turtlebot3Drive::ScanCallback,
+            this,
+            std::placeholders::_1));
+
+    mOdometrySubscriber = create_subscription<nav_msgs::msg::Odometry>(
+        "odom",
         rclcpp::SensorDataQoS(),
-        [this](const nav_msgs::msg::Odometry::SharedPtr aMessage)
-        {
-            OdometryCallback(aMessage);
-        });
-    // Keep 20 Hz in simulation seconds, also when Gazebo runs faster than real time.
-    mUpdateTimer = rclcpp::create_timer(this, get_clock(), rclcpp::Duration::from_seconds(0.05),
-        [this]() { Update(); });
-    RCLCPP_INFO(get_logger(), "Right-wall follower ready; waiting for laser data");
+        std::bind(
+            &Turtlebot3Drive::OdometryCallback,
+            this,
+            std::placeholders::_1));
+
+    // Run at 20 Hz according to the ROS clock, including simulation time.
+    mUpdateTimer = rclcpp::create_timer(
+        this,
+        get_clock(),
+        rclcpp::Duration::from_seconds(0.05),
+        std::bind(&Turtlebot3Drive::Update, this));
+
+    RCLCPP_INFO(
+        get_logger(),
+        "Right-wall follower ready; waiting for laser data");
 }
 
+// Read parameters once when constructing the controller.
 WallFollower::Settings Turtlebot3Drive::ReadSettings()
 {
     WallFollower::Settings Settings;
-    Settings.WallDistance = declare_parameter<double>("wall_distance", Settings.WallDistance);
-    Settings.ForwardSpeed = declare_parameter<double>("forward_speed", Settings.ForwardSpeed);
-    Settings.TurnSpeed = declare_parameter<double>("turn_speed", Settings.TurnSpeed);
-    Settings.FrontStopDistance = declare_parameter<double>("front_stop_distance", Settings.FrontStopDistance);
-    Settings.FrontResumeDistance = declare_parameter<double>("front_resume_distance", Settings.FrontResumeDistance);
-    Settings.WallLostDistance = declare_parameter<double>("wall_lost_distance", Settings.WallLostDistance);
-    Settings.DistanceGain = declare_parameter<double>("distance_gain", Settings.DistanceGain);
-    Settings.HeadingGain = declare_parameter<double>("heading_gain", Settings.HeadingGain);
+
+    Settings.WallDistance = declare_parameter<double>(
+        "wall_distance", Settings.WallDistance);
+
+    Settings.ForwardSpeed = declare_parameter<double>(
+        "forward_speed", Settings.ForwardSpeed);
+
+    Settings.TurnSpeed = declare_parameter<double>(
+        "turn_speed", Settings.TurnSpeed);
+
+    Settings.FrontStopDistance = declare_parameter<double>(
+        "front_stop_distance", Settings.FrontStopDistance);
+
+    Settings.FrontResumeDistance = declare_parameter<double>(
+        "front_resume_distance", Settings.FrontResumeDistance);
+
+    Settings.WallLostDistance = declare_parameter<double>(
+        "wall_lost_distance", Settings.WallLostDistance);
+
+    Settings.DistanceGain = declare_parameter<double>(
+        "distance_gain", Settings.DistanceGain);
+
+    Settings.HeadingGain = declare_parameter<double>(
+        "heading_gain", Settings.HeadingGain);
+
     return Settings;
 }
 
-void Turtlebot3Drive::ScanCallback(const sensor_msgs::msg::LaserScan::SharedPtr aMessage)
+// Forward laser data to the controller and record its timing information.
+void Turtlebot3Drive::ScanCallback(
+    const sensor_msgs::msg::LaserScan::SharedPtr aMessage)
 {
-    mWallFollower.UpdateScan(aMessage->ranges, aMessage->angle_min,
-        aMessage->angle_increment, aMessage->range_min, aMessage->range_max);
+    mWallFollower.UpdateScan(
+        aMessage->ranges,
+        aMessage->angle_min,
+        aMessage->angle_increment,
+        aMessage->range_min,
+        aMessage->range_max);
+
     mLastScan = std::chrono::steady_clock::now();
-    mLastScanStamp = rclcpp::Time(aMessage->header.stamp, get_clock()->get_clock_type());
+
+    mLastScanStamp = rclcpp::Time(
+        aMessage->header.stamp,
+        get_clock()->get_clock_type());
+
     mHaveScan = true;
 }
 
-void Turtlebot3Drive::OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr aMessage)
+// Record an odometry history for the RViz Path display.
+void Turtlebot3Drive::OdometryCallback(
+    const nav_msgs::msg::Odometry::SharedPtr aMessage)
 {
-    const rclcpp::Time SampleTime(aMessage->header.stamp, get_clock()->get_clock_type());
+    const rclcpp::Time SampleTime(
+        aMessage->header.stamp,
+        get_clock()->get_clock_type());
 
-    if (mPath.poses.empty() || SampleTime < mLastPathSample
+    // Start a new trajectory when time goes backwards or the frame changes.
+    if (SampleTime < mLastPathSample
+        || mPath.header.frame_id != aMessage->header.frame_id)
+    {
+        mPath.poses.clear();
+    }
+
+    // Record poses at up to five samples per simulation second.
+    if (mPath.poses.empty()
         || (SampleTime - mLastPathSample).seconds() >= 0.2)
     {
-        if (mPath.header.frame_id != aMessage->header.frame_id)
-        {
-            mPath.poses.clear();
-        }
-
         geometry_msgs::msg::PoseStamped Pose;
         Pose.header = aMessage->header;
         Pose.pose = aMessage->pose.pose;
+
         mPath.header = aMessage->header;
         mPath.poses.push_back(Pose);
         mPathPublisher->publish(mPath);
+
         mLastPathSample = SampleTime;
     }
 }
 
-void Turtlebot3Drive::PublishCommand(const WallFollower::Command& aCommand)
+// Convert the controller's command into the selected ROS velocity message.
+void Turtlebot3Drive::PublishCommand(
+    const WallFollower::Command& aCommand)
 {
     geometry_msgs::msg::Twist Velocity;
     Velocity.linear.x = aCommand.Linear;
@@ -117,6 +185,7 @@ void Turtlebot3Drive::PublishCommand(const WallFollower::Command& aCommand)
         Stamped.header.stamp = now();
         Stamped.header.frame_id = "base_link";
         Stamped.twist = Velocity;
+
         mStampedPublisher->publish(Stamped);
     }
     else
@@ -125,6 +194,7 @@ void Turtlebot3Drive::PublishCommand(const WallFollower::Command& aCommand)
     }
 }
 
+// Publish a stop unless a received scan is recent enough for the controller.
 void Turtlebot3Drive::Update()
 {
     WallFollower::Command Command;
@@ -133,11 +203,13 @@ void Turtlebot3Drive::Update()
     {
         const double ReceiptAge = std::chrono::duration<double>(
             std::chrono::steady_clock::now() - mLastScan).count();
+
         const double StampAge = (now() - mLastScanStamp).seconds();
 
         if (StampAge >= 0.0)
         {
-            Command = mWallFollower.CalculateCommand(std::max(ReceiptAge, StampAge));
+            Command = mWallFollower.CalculateCommand(
+                std::max(ReceiptAge, StampAge));
         }
     }
 
@@ -147,18 +219,8 @@ void Turtlebot3Drive::Update()
 int main(int argc, char** argv)
 {
     rclcpp::init(argc, argv);
-    int Result = 0;
-
-    try
-    {
-        rclcpp::spin(std::make_shared<Turtlebot3Drive>());
-    }
-    catch (const std::exception& Error)
-    {
-        RCLCPP_ERROR(rclcpp::get_logger("turtlebot3_drive"), "%s", Error.what());
-        Result = 1;
-    }
-
+    rclcpp::spin(std::make_shared<Turtlebot3Drive>());
     rclcpp::shutdown();
-    return Result;
+
+    return 0;
 }

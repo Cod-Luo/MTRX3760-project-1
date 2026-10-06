@@ -15,9 +15,7 @@ from launch_ros.actions import Node
 
 
 def launch_scenario(context):
-    model = os.environ.get('TURTLEBOT3_MODEL', 'waffle_pi')
-    if model != 'waffle_pi':
-        raise RuntimeError('This A1 launch uses waffle_pi for its simulated laser and camera. Export TURTLEBOT3_MODEL=waffle_pi.')
+    model = os.environ.get('TURTLEBOT3_MODEL', 'burger')
     os.environ['TURTLEBOT3_MODEL'] = model
     package = get_package_share_directory('turtlebot3_gazebo')
     gazebo = get_package_share_directory('ros_gz_sim')
@@ -41,7 +39,7 @@ def launch_scenario(context):
         PythonLaunchDescriptionSource(os.path.join(gazebo, 'launch', 'gz_sim.launch.py')),
         launch_arguments={'gz_args': ['-g -v2 --gui-config ', gui_config], 'on_exit_shutdown': 'true'}.items(),
         condition=IfCondition(gui))
-    with open(os.path.join(package, 'urdf', 'turtlebot3_waffle_pi.urdf'), encoding='utf-8') as source:
+    with open(os.path.join(package, 'urdf', 'turtlebot3_' + model + '.urdf'), encoding='utf-8') as source:
         robot_description = source.read()
     state_publisher = Node(
         package='robot_state_publisher', executable='robot_state_publisher', output='screen',
@@ -51,12 +49,12 @@ def launch_scenario(context):
         # Keep physical geometry and laser unchanged; reduce camera rendering load.
         temporary = tempfile.TemporaryDirectory(prefix='mtrx3760-camera-')
         atexit.register(temporary.cleanup)
-        robot = ET.parse(os.path.join(package, 'models', 'turtlebot3_waffle_pi', 'model.sdf'))
+        robot = ET.parse(os.path.join(package, 'models', 'turtlebot3_' + model, 'model.sdf'))
         for sensor in robot.findall('.//sensor[@type="camera"]'):
             sensor.find('update_rate').text = '10'
             sensor.find('camera/image/width').text = '320'
             sensor.find('camera/image/height').text = '240'
-        model_path = os.path.join(temporary.name, 'waffle_pi.sdf')
+        model_path = os.path.join(temporary.name, model + '.sdf')
         robot.write(model_path, encoding='utf-8', xml_declaration=True)
         spawn_arguments['model_sdf'] = model_path
     spawn = IncludeLaunchDescription(

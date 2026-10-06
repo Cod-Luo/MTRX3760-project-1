@@ -14,7 +14,8 @@
 //
 // Authors: Taehun Lim (Darby), Ryan Shim
 
-// ROS interface for MTRX3760 Project 1 right-wall following.
+// turtlebot3_drive.hpp - ROS interface and trajectory recording for wall following.
+
 #ifndef TURTLEBOT3_GAZEBO_TURTLEBOT3_DRIVE_HPP
 #define TURTLEBOT3_GAZEBO_TURTLEBOT3_DRIVE_HPP
 
@@ -28,30 +29,63 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 
+// Connects the wall-following controller to ROS and records an odometry trajectory.
 class Turtlebot3Drive : public rclcpp::Node
 {
     public:
         Turtlebot3Drive();
 
     private:
+        // Reads startup parameters; settings are fixed for this node instance.
         WallFollower::Settings ReadSettings();
-        void ScanCallback(const sensor_msgs::msg::LaserScan::SharedPtr aMessage);
-        void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr aMessage);
+
+        // Updates laser sectors and records receipt and measurement times.
+        void ScanCallback(
+            const sensor_msgs::msg::LaserScan::SharedPtr aMessage);
+
+        // Samples the path at up to 5 Hz and clears it after a time or frame reset.
+        void OdometryCallback(
+            const nav_msgs::msg::Odometry::SharedPtr aMessage);
+
+        // Calculates and publishes commands using the latest usable scan.
         void Update();
+
+        // Publishes the velocity message type selected at startup.
         void PublishCommand(const WallFollower::Command& aCommand);
 
         WallFollower mWallFollower;
+
+        // Must match the receiver's cmd_vel message type.
         bool mUseStampedVelocity;
+
+        // Prevents movement before the first scan arrives.
         bool mHaveScan = false;
+
+        // Receipt time uses a steady clock; measurement time uses the ROS clock.
         std::chrono::steady_clock::time_point mLastScan;
         rclcpp::Time mLastScanStamp;
-        rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr mVelocityPublisher;
-        rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr mStampedPublisher;
-        rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr mPathPublisher;
-        rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr mScanSubscriber;
-        rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr mOdometrySubscriber;
+
+        rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr
+            mVelocityPublisher;
+
+        rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr
+            mStampedPublisher;
+
+        rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr
+            mPathPublisher;
+
+        rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr
+            mScanSubscriber;
+
+        rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr
+            mOdometrySubscriber;
+
         rclcpp::TimerBase::SharedPtr mUpdateTimer;
+
+        // Accumulated odometry poses from the current recorded run.
         nav_msgs::msg::Path mPath;
+
+        // Timestamp of the last recorded pose.
         rclcpp::Time mLastPathSample;
 };
 
