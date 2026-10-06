@@ -1,0 +1,35 @@
+{
+  "scenario": "branched",
+  "world": "project1_branched",
+  "elapsed_seconds": 97.52883027600001,
+  "simulation_seconds": 118.579,
+  "requested_real_time_factor": 2.0,
+  "ordered_checkpoints_reached": [
+    "junction_approach",
+    "right_branch",
+    "dead_end",
+    "returned_from_dead_end",
+    "exit_corridor"
+  ],
+  "laser_messages": 1185,
+  "camera_messages": 1186,
+  "camera_dimensions": [
+    320,
+    240
+  ],
+  "recorded_path_poses": 558,
+  "final_world_pose": [
+    2.0077915598857268,
+    2.8022877689699617
+  ],
+  "odometry_inferred_final_pose": [
+    -0.18316945514617977,
+    3.1179971304749903
+  ],
+  "ground_truth_messages": 5504,
+  "ground_truth_error": null,
+  "maze_exit_reached": true,
+  "note": "Exit and ground-truth.csv use Gazebo model poses. trajectory.csv and the RViz path use drifting wheel odometry. The controller receives neither ground truth nor maze coordinates.",
+  "runtime_checks_passed": true,
+  "measured_average_real_time_factor": 1.215835355191172
+}

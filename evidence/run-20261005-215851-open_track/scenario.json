@@ -1,0 +1,60 @@
+{
+  "label": "Open track: exposed corners on a continuous wall",
+  "world": "project1_open_track",
+  "spawn": [
+    -1.8,
+    0.4,
+    0.0
+  ],
+  "exit": [
+    -2.6,
+    -1.8,
+    -2.2,
+    -1.8
+  ],
+  "plot_bounds": [
+    -3.0,
+    3.5,
+    -2.5,
+    1.5
+  ],
+  "checkpoints": [
+    {
+      "name": "starting_wall",
+      "bounds": [
+        -1.1,
+        -0.3,
+        0.1,
+        0.7
+      ]
+    },
+    {
+      "name": "first_outside_corner",
+      "bounds": [
+        0.15,
+        0.7,
+        -0.7,
+        0.15
+      ]
+    },
+    {
+      "name": "east_end",
+      "bounds": [
+        2.5,
+        3.1,
+        -1.8,
+        -0.2
+      ]
+    },
+    {
+      "name": "return_wall",
+      "bounds": [
+        0.3,
+        1.5,
+        -2.3,
+        -1.7
+      ]
+    }
+  ],
+  "name": "open_track"
+}

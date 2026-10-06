@@ -1,0 +1,13 @@
+{
+  "ground_truth_samples": 1219,
+  "minimum_robot_origin_to_wall_surface_m": 0.2694463430975596,
+  "scenario": "s_maze",
+  "ground_truth_exit_reached": true,
+  "note": "Clearance is for the model origin, not the complete robot footprint; no collision-free-body claim is inferred from this alone.",
+  "ordered_checkpoints_visited": [
+    "first_corridor_east_end",
+    "middle_corridor_west_end",
+    "upper_corridor"
+  ],
+  "all_ordered_checkpoints_visited": true
+}

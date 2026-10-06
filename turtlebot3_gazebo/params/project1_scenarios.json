@@ -1,0 +1,41 @@
+{
+  "s_maze": {
+    "label": "Original S-maze",
+    "world": "project1_maze",
+    "spawn": [-2.4, -2.55, 0.0],
+    "exit": [4.0, 5.0, 1.65, 2.55],
+    "plot_bounds": [-3.5, 5.0, -3.5, 3.5],
+    "checkpoints": [
+      {"name": "first_corridor_east_end", "bounds": [2.1, 2.9, -2.9, -1.5]},
+      {"name": "middle_corridor_west_end", "bounds": [-2.9, -2.1, -0.9, 0.9]},
+      {"name": "upper_corridor", "bounds": [-2.9, -0.1, 1.2, 2.9]}
+    ]
+  },
+  "branched": {
+    "label": "Branched maze: right branch, dead end and return",
+    "world": "project1_branched",
+    "spawn": [-2.8, -0.4, 0.0],
+    "exit": [1.6, 2.6, 2.8, 3.3],
+    "plot_bounds": [-4.0, 4.0, -4.5, 3.5],
+    "checkpoints": [
+      {"name": "junction_approach", "bounds": [-1.6, -0.9, -0.7, 0.7]},
+      {"name": "right_branch", "bounds": [-0.7, 0.7, -2.4, -1.7]},
+      {"name": "dead_end", "bounds": [-0.7, 0.7, -3.7, -3.1]},
+      {"name": "returned_from_dead_end", "bounds": [-0.7, 0.7, -1.2, -0.2]},
+      {"name": "exit_corridor", "bounds": [1.0, 2.3, 1.9, 2.7]}
+    ]
+  },
+  "open_track": {
+    "label": "Open track: exposed corners on a continuous wall",
+    "world": "project1_open_track",
+    "spawn": [-1.8, 0.4, 0.0],
+    "exit": [-2.6, -1.8, -2.2, -1.8],
+    "plot_bounds": [-3.0, 3.5, -2.5, 1.5],
+    "checkpoints": [
+      {"name": "starting_wall", "bounds": [-1.1, -0.3, 0.1, 0.7]},
+      {"name": "first_outside_corner", "bounds": [0.15, 0.7, -0.7, 0.15]},
+      {"name": "east_end", "bounds": [2.5, 3.1, -1.8, -0.2]},
+      {"name": "return_wall", "bounds": [0.3, 1.5, -2.3, -1.7]}
+    ]
+  }
+}

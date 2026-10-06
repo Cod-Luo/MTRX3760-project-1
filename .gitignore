@@ -1,6 +1,19 @@
 build/
 install/
 log/
-
-.vscode/
-.DS_Store
+test-output/
+# Keep new/generated runs local; preserve the verified development snapshot below.
+evidence/*
+!evidence/README.md
+!evidence/run-20261005-210427/
+!evidence/run-20261005-211442/
+!evidence/run-20261005-213255/
+!evidence/run-20261005-215851-open_track/
+!evidence/run-20261005-220102-branched/
+!evidence/run-20261005-220406-s_maze/
+!evidence/run-20261005-221119-branched/
+!evidence/run-20261005-221553-branched/
+__pycache__/
+*.exe
+*.o
+*.bundle

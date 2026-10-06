@@ -1,0 +1,1 @@
+{"elapsed_s": 271.9, "ground_truth_pose": [2.0110125769209337, 2.2558597069918944], "laser_messages": 1089, "camera_messages": 2577, "checkpoints": ["junction_approach", "right_branch", "dead_end", "returned_from_dead_end", "exit_corridor"]}

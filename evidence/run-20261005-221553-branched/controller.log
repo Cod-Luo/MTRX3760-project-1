@@ -1,0 +1,2 @@
+[INFO] [1791198959.927572518] [turtlebot3_drive_node]: Right-wall follower ready; waiting for laser data
+[INFO] [1791199246.517197994] [rclcpp]: signal_handler(SIGINT/SIGTERM)

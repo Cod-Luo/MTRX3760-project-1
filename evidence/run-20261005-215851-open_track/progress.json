@@ -1,0 +1,1 @@
+{"elapsed_s": 78.3, "ground_truth_pose": [-1.607321935492698, -1.9438993850783595], "laser_messages": 933, "camera_messages": 934, "checkpoints": ["starting_wall", "first_outside_corner", "east_end", "return_wall"]}

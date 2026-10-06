@@ -1,0 +1,15 @@
+{
+  "ground_truth_samples": 2261,
+  "minimum_robot_origin_to_wall_surface_m": 0.29581578689064575,
+  "scenario": "branched",
+  "ground_truth_exit_reached": true,
+  "note": "Clearance is for the model origin, not the complete robot footprint; no collision-free-body claim is inferred from this alone.",
+  "ordered_checkpoints_visited": [
+    "junction_approach",
+    "right_branch",
+    "dead_end",
+    "returned_from_dead_end",
+    "exit_corridor"
+  ],
+  "all_ordered_checkpoints_visited": true
+}
