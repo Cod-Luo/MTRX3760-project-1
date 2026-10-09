@@ -1,18 +1,18 @@
 # Simulation evidence snapshot
 
-These are genuine saved development runs, not physical-robot results. New runs
-remain ignored by Git until deliberately selected for a later snapshot.
+These are historical Waffle Pi simulation runs, not results for the current plain
+Burger default or physical robot. New runs remain ignored by Git until selected.
 
 | Run | Purpose and interpretation |
 | --- | --- |
 | `run-20261005-210427` | Early S-maze development run. Its exit check used drifting odometry; do not use this as the accurate route figure. |
 | `run-20261005-211442` | Ground-truth-verified S-maze pass, 314.6 wall seconds. Final capture was recovered separately after editing the running shell harness; see its `EVIDENCE.md`. |
-| `run-20261005-213255` | User-visible full-camera S-maze pass, 381.5 wall seconds. Includes supplied RViz/Gazebo/terminal screenshots. |
+| `run-20261005-213255` | Visible full-camera S-maze pass, 381.5 wall seconds. Includes recorded RViz/Gazebo/terminal screenshots. |
 | `run-20261005-215851-open_track` | Fast/headless open-track pass, all four landmarks and finish, 79.4 wall seconds. |
 | `run-20261005-220102-branched` | Fast/headless branched-maze pass, all five landmarks and exit, 100.4 wall seconds. |
 | `run-20261005-220406-s_maze` | Fast/headless S-maze pass, all three corridor checks and exit, 129.0 wall seconds. |
 | `run-20261005-221119-branched` | Additional fast/headless branched-maze pass, all five landmarks and exit, 97.5 wall seconds. |
-| `run-20261005-221553-branched` | User-visible full-camera branched-maze pass, all five landmarks including dead-end recovery and exit, 280.5 wall seconds. Includes supplied screenshots. |
+| `run-20261005-221553-branched` | Visible full-camera branched-maze pass, all five landmarks including dead-end recovery and exit, 280.5 wall seconds. Includes recorded screenshots. |
 
 `trajectory.png` distinguishes simulator ground truth (blue) from drifting wheel
 odometry (dashed orange). The green RViz path is wheel odometry, not the exact
