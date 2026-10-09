@@ -77,8 +77,3 @@ This checks scan processing and steering. It does not build or run the ROS node.
 The simulator is based on ROBOTIS TurtleBot3 simulations, Jazzy source snapshot
 `45633014a14e8f438495b532a723e4ad45cbbd31`. Original copyright notices
 and the repository licence are retained.
-
-OpenAI ChatGPT/Codex assisted with implementation, code review, test tooling and
-documentation. The A3 review included shutdown sequencing, validation diagnostics,
-workspace selection and regression-test organisation. The assessment report should
-describe this assistance accurately; edited material requires team review and validation.
