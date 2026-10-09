@@ -14,22 +14,21 @@
 //
 // Authors: Taehun Lim (Darby), Ryan Shim
 
-// wall_follower_node.hpp - ROS interface and trajectory recording for wall following.
+// wall_follower_node.hpp - ROS node that connects the wall follower to the robot.
 
 #ifndef TURTLEBOT3_GAZEBO_WALL_FOLLOWER_NODE_HPP
 #define TURTLEBOT3_GAZEBO_WALL_FOLLOWER_NODE_HPP
 
+#include "turtlebot3_gazebo/path_recorder.hpp"
 #include "turtlebot3_gazebo/wall_follower.hpp"
 
 #include <chrono>
 #include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <nav_msgs/msg/path.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 
-// Connects the wall-following controller to ROS and records an odometry trajectory.
+// Connects the wall-following controller to ROS. Top-level owner of the program's parts.
 class CWallFollowerNode : public rclcpp::Node
 {
     public:
@@ -42,10 +41,6 @@ class CWallFollowerNode : public rclcpp::Node
         // Updates laser sectors and records receipt and measurement times.
         void ScanCallback(
             const sensor_msgs::msg::LaserScan::SharedPtr aMessage);
-
-        // Samples the path at up to 5 Hz and clears it after a time or frame reset.
-        void OdometryCallback(
-            const nav_msgs::msg::Odometry::SharedPtr aMessage);
 
         // Calculates and publishes commands using the latest usable scan.
         void Update();
@@ -71,22 +66,13 @@ class CWallFollowerNode : public rclcpp::Node
         rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr
             mStampedPublisher;
 
-        rclcpp::Publisher<nav_msgs::msg::Path>::SharedPtr
-            mPathPublisher;
-
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr
             mScanSubscriber;
 
-        rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr
-            mOdometrySubscriber;
-
         rclcpp::TimerBase::SharedPtr mUpdateTimer;
 
-        // Accumulated odometry poses from the current recorded run.
-        nav_msgs::msg::Path mPath;
-
-        // Timestamp of the last recorded pose.
-        rclcpp::Time mLastPathSample;
+        // Draws the driven route in RViz; independent of control.
+        CPathRecorder mPathRecorder;
 };
 
 #endif

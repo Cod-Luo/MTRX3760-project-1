@@ -14,13 +14,12 @@
 //
 // Authors: Taehun Lim (Darby), Ryan Shim
 
-// wall_follower_node.cpp - ROS communication, controller updates and path recording.
+// wall_follower_node.cpp - ROS communication and controller updates.
 
 #include "turtlebot3_gazebo/wall_follower_node.hpp"
 
 #include <algorithm>
 #include <functional>
-#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <memory>
 #include <rclcpp/create_timer.hpp>
 
@@ -32,7 +31,7 @@ CWallFollowerNode::CWallFollowerNode()
           declare_parameter<bool>("use_stamped_velocity", true)),
       mLastScan(std::chrono::steady_clock::now()),
       mLastScanStamp(0, 0, get_clock()->get_clock_type()),
-      mLastPathSample(0, 0, get_clock()->get_clock_type())
+      mPathRecorder(*this)
 {
     if (!mWallFollower.HasValidSettings())
     {
@@ -55,24 +54,11 @@ CWallFollowerNode::CWallFollowerNode()
                 "cmd_vel", 10);
     }
 
-    // Each message contains the complete path, so retain the latest message.
-    mPathPublisher = create_publisher<nav_msgs::msg::Path>(
-        "wall_follower/path",
-        rclcpp::QoS(1).reliable().transient_local());
-
     mScanSubscriber = create_subscription<sensor_msgs::msg::LaserScan>(
         "scan",
         rclcpp::SensorDataQoS(),
         std::bind(
             &CWallFollowerNode::ScanCallback,
-            this,
-            std::placeholders::_1));
-
-    mOdometrySubscriber = create_subscription<nav_msgs::msg::Odometry>(
-        "odom",
-        rclcpp::SensorDataQoS(),
-        std::bind(
-            &CWallFollowerNode::OdometryCallback,
             this,
             std::placeholders::_1));
 
@@ -138,37 +124,6 @@ void CWallFollowerNode::ScanCallback(
         get_clock()->get_clock_type());
 
     mHaveScan = true;
-}
-
-// Record an odometry history for the RViz Path display.
-void CWallFollowerNode::OdometryCallback(
-    const nav_msgs::msg::Odometry::SharedPtr aMessage)
-{
-    const rclcpp::Time SampleTime(
-        aMessage->header.stamp,
-        get_clock()->get_clock_type());
-
-    // Start a new trajectory when time goes backwards or the frame changes.
-    if (SampleTime < mLastPathSample
-        || mPath.header.frame_id != aMessage->header.frame_id)
-    {
-        mPath.poses.clear();
-    }
-
-    // Record poses at up to five samples per simulation second.
-    if (mPath.poses.empty()
-        || (SampleTime - mLastPathSample).seconds() >= 0.2)
-    {
-        geometry_msgs::msg::PoseStamped Pose;
-        Pose.header = aMessage->header;
-        Pose.pose = aMessage->pose.pose;
-
-        mPath.header = aMessage->header;
-        mPath.poses.push_back(Pose);
-        mPathPublisher->publish(mPath);
-
-        mLastPathSample = SampleTime;
-    }
 }
 
 // Convert the controller's command into the selected ROS velocity message.
