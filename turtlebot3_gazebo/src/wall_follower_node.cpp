@@ -23,14 +23,18 @@
 #include <memory>
 #include <rclcpp/create_timer.hpp>
 
+const std::string CWallFollowerNode::NodeName = "turtlebot3_drive_node";
+const std::string CWallFollowerNode::ScanTopic = "scan";
+const double CWallFollowerNode::UpdatePeriodSeconds = 0.05;  // 20 Hz.
+
 // Configure the controller and connect its inputs and outputs to ROS.
 CWallFollowerNode::CWallFollowerNode()
-    : Node("turtlebot3_drive_node"),
+    : Node(NodeName),
       mWallFollower(ReadSettings()),
       mVelocityPublisher(
           *this,
           declare_parameter<bool>("use_stamped_velocity", true)),
-      mLastScan(std::chrono::steady_clock::now()),
+      mLastScanReceipt(std::chrono::steady_clock::now()),
       mLastScanStamp(0, 0, get_clock()->get_clock_type()),
       mPathRecorder(*this)
 {
@@ -42,18 +46,18 @@ CWallFollowerNode::CWallFollowerNode()
     }
 
     mScanSubscriber = create_subscription<sensor_msgs::msg::LaserScan>(
-        "scan",
+        ScanTopic,
         rclcpp::SensorDataQoS(),
         std::bind(
             &CWallFollowerNode::ScanCallback,
             this,
             std::placeholders::_1));
 
-    // Run at 20 Hz according to the ROS clock, including simulation time.
+    // Uses the ROS clock, so the rate also holds in faster-than-real-time simulation.
     mUpdateTimer = rclcpp::create_timer(
         this,
         get_clock(),
-        rclcpp::Duration::from_seconds(0.05),
+        rclcpp::Duration::from_seconds(UpdatePeriodSeconds),
         std::bind(&CWallFollowerNode::Update, this));
 
     RCLCPP_INFO(
@@ -104,7 +108,7 @@ void CWallFollowerNode::ScanCallback(
         aMessage->range_min,
         aMessage->range_max);
 
-    mLastScan = std::chrono::steady_clock::now();
+    mLastScanReceipt = std::chrono::steady_clock::now();
 
     mLastScanStamp = rclcpp::Time(
         aMessage->header.stamp,
@@ -121,7 +125,7 @@ void CWallFollowerNode::Update()
     if (mHaveScan)
     {
         const double ReceiptAge = std::chrono::duration<double>(
-            std::chrono::steady_clock::now() - mLastScan).count();
+            std::chrono::steady_clock::now() - mLastScanReceipt).count();
 
         const double StampAge = (now() - mLastScanStamp).seconds();
 

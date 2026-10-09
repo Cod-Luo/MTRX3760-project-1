@@ -28,6 +28,8 @@
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 
+#include <string>
+
 // Connects the wall-following controller to ROS. Top-level owner of the program's parts.
 class CWallFollowerNode : public rclcpp::Node
 {
@@ -55,7 +57,7 @@ class CWallFollowerNode : public rclcpp::Node
         bool mHaveScan = false;
 
         // Receipt time uses a steady clock; measurement time uses the ROS clock.
-        std::chrono::steady_clock::time_point mLastScan;
+        std::chrono::steady_clock::time_point mLastScanReceipt;
         rclcpp::Time mLastScanStamp;
 
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr
@@ -65,6 +67,10 @@ class CWallFollowerNode : public rclcpp::Node
 
         // Draws the driven route in RViz; independent of control.
         CPathRecorder mPathRecorder;
+
+        static const std::string NodeName;
+        static const std::string ScanTopic;
+        static const double UpdatePeriodSeconds;  // Time between drive commands.
 };
 
 #endif
