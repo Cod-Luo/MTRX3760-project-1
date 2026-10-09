@@ -5,11 +5,11 @@
 #include <algorithm>
 #include <cmath>
 
-const double WallFollower::Pi = 3.14159265358979323846;
-const double WallFollower::ScanTimeout = 0.5;
+const double CWallFollower::Pi = 3.14159265358979323846;
+const double CWallFollower::ScanTimeout = 0.5;
 
 // Invalid settings disable movement without using exception handling.
-WallFollower::WallFollower(const Settings& aSettings)
+CWallFollower::CWallFollower(const Settings& aSettings)
     : mSettings(aSettings)
 {
     mSettingsValid =
@@ -31,13 +31,13 @@ WallFollower::WallFollower(const Settings& aSettings)
         && mSettings.HeadingGain >= 0.0;
 }
 
-bool WallFollower::HasValidSettings() const
+bool CWallFollower::HasValidSettings() const
 {
     return mSettingsValid;
 }
 
 // Collect usable returns inside the sector, then select its minimum or median.
-WallFollower::Sector WallFollower::ReadSector(
+CWallFollower::Sector CWallFollower::ReadSector(
     const std::vector<float>& aRanges,
     double aAngleMin,
     double aAngleIncrement,
@@ -98,7 +98,7 @@ WallFollower::Sector WallFollower::ReadSector(
 }
 
 // Replace old sectors so an invalid scan cannot reuse previous distances.
-void WallFollower::UpdateScan(
+void CWallFollower::UpdateScan(
     const std::vector<float>& aRanges,
     double aAngleMin,
     double aAngleIncrement,
@@ -157,7 +157,7 @@ void WallFollower::UpdateScan(
 }
 
 // Prioritise front clearance, then wall reacquisition, then normal wall tracking.
-WallFollower::Command WallFollower::CalculateCommand(double aScanAgeSeconds)
+CWallFollower::Command CWallFollower::CalculateCommand(double aScanAgeSeconds)
 {
     Command Result;
 

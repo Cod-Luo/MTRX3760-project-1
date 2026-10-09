@@ -46,7 +46,7 @@ std::vector<float> Scan(double aRight, double aFront = 3.5, int aSamples = 360)
     return Ranges;
 }
 
-void Feed(WallFollower& aFollower, const std::vector<float>& aRanges)
+void Feed(CWallFollower& aFollower, const std::vector<float>& aRanges)
 {
     aFollower.UpdateScan(aRanges, -Pi, 2.0 * Pi / static_cast<double>(aRanges.size()),
         0.12, 3.5);
@@ -54,7 +54,7 @@ void Feed(WallFollower& aFollower, const std::vector<float>& aRanges)
 
 bool CheckSteering()
 {
-    WallFollower Follower(WallFollower::Settings{});
+    CWallFollower Follower(CWallFollower::Settings{});
     if (!Require(Follower.CalculateCommand(0.0).Linear == 0.0, "Motion before first scan"))
     {
         return false;
@@ -134,9 +134,9 @@ bool CheckSteering()
     {
         return false;
     }
-    WallFollower::Settings Settings;
+    CWallFollower::Settings Settings;
     Settings.WallDistance = -1.0;
-    WallFollower Invalid(Settings);
+    CWallFollower Invalid(Settings);
     Feed(Invalid, Scan(0.35));
     Command = Invalid.CalculateCommand(0.0);
     if (!Require(!Invalid.HasValidSettings(), "Invalid settings were accepted"))
@@ -204,7 +204,7 @@ bool CheckMaze(bool aModelSensor)
         {-2.0, 1.0, 3.0, 1.0}, {3.0, 1.6, 4.5, 1.6},
         {3.0, 2.6, 4.5, 2.6}
     };
-    WallFollower Follower(WallFollower::Settings{});
+    CWallFollower Follower(CWallFollower::Settings{});
     double X = -2.4;
     double Y = -2.55;
     double Heading = 0.0;

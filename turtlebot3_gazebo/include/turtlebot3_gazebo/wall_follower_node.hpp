@@ -14,10 +14,10 @@
 //
 // Authors: Taehun Lim (Darby), Ryan Shim
 
-// turtlebot3_drive.hpp - ROS interface and trajectory recording for wall following.
+// wall_follower_node.hpp - ROS interface and trajectory recording for wall following.
 
-#ifndef TURTLEBOT3_GAZEBO_TURTLEBOT3_DRIVE_HPP
-#define TURTLEBOT3_GAZEBO_TURTLEBOT3_DRIVE_HPP
+#ifndef TURTLEBOT3_GAZEBO_WALL_FOLLOWER_NODE_HPP
+#define TURTLEBOT3_GAZEBO_WALL_FOLLOWER_NODE_HPP
 
 #include "turtlebot3_gazebo/wall_follower.hpp"
 
@@ -30,14 +30,14 @@
 #include <sensor_msgs/msg/laser_scan.hpp>
 
 // Connects the wall-following controller to ROS and records an odometry trajectory.
-class Turtlebot3Drive : public rclcpp::Node
+class CWallFollowerNode : public rclcpp::Node
 {
     public:
-        Turtlebot3Drive();
+        CWallFollowerNode();
 
     private:
         // Reads startup parameters; settings are fixed for this node instance.
-        WallFollower::Settings ReadSettings();
+        CWallFollower::Settings ReadSettings();
 
         // Updates laser sectors and records receipt and measurement times.
         void ScanCallback(
@@ -51,9 +51,9 @@ class Turtlebot3Drive : public rclcpp::Node
         void Update();
 
         // Publishes the velocity message type selected at startup.
-        void PublishCommand(const WallFollower::Command& aCommand);
+        void PublishCommand(const CWallFollower::Command& aCommand);
 
-        WallFollower mWallFollower;
+        CWallFollower mWallFollower;
 
         // Must match the receiver's cmd_vel message type.
         bool mUseStampedVelocity;

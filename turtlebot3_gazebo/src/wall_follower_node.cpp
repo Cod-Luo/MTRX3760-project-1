@@ -14,9 +14,9 @@
 //
 // Authors: Taehun Lim (Darby), Ryan Shim
 
-// turtlebot3_drive.cpp - ROS communication, controller updates and path recording.
+// wall_follower_node.cpp - ROS communication, controller updates and path recording.
 
-#include "turtlebot3_gazebo/turtlebot3_drive.hpp"
+#include "turtlebot3_gazebo/wall_follower_node.hpp"
 
 #include <algorithm>
 #include <functional>
@@ -25,7 +25,7 @@
 #include <rclcpp/create_timer.hpp>
 
 // Configure the controller and connect its inputs and outputs to ROS.
-Turtlebot3Drive::Turtlebot3Drive()
+CWallFollowerNode::CWallFollowerNode()
     : Node("turtlebot3_drive_node"),
       mWallFollower(ReadSettings()),
       mUseStampedVelocity(
@@ -64,7 +64,7 @@ Turtlebot3Drive::Turtlebot3Drive()
         "scan",
         rclcpp::SensorDataQoS(),
         std::bind(
-            &Turtlebot3Drive::ScanCallback,
+            &CWallFollowerNode::ScanCallback,
             this,
             std::placeholders::_1));
 
@@ -72,7 +72,7 @@ Turtlebot3Drive::Turtlebot3Drive()
         "odom",
         rclcpp::SensorDataQoS(),
         std::bind(
-            &Turtlebot3Drive::OdometryCallback,
+            &CWallFollowerNode::OdometryCallback,
             this,
             std::placeholders::_1));
 
@@ -81,7 +81,7 @@ Turtlebot3Drive::Turtlebot3Drive()
         this,
         get_clock(),
         rclcpp::Duration::from_seconds(0.05),
-        std::bind(&Turtlebot3Drive::Update, this));
+        std::bind(&CWallFollowerNode::Update, this));
 
     RCLCPP_INFO(
         get_logger(),
@@ -89,9 +89,9 @@ Turtlebot3Drive::Turtlebot3Drive()
 }
 
 // Read parameters once when constructing the controller.
-WallFollower::Settings Turtlebot3Drive::ReadSettings()
+CWallFollower::Settings CWallFollowerNode::ReadSettings()
 {
-    WallFollower::Settings Settings;
+    CWallFollower::Settings Settings;
 
     Settings.WallDistance = declare_parameter<double>(
         "wall_distance", Settings.WallDistance);
@@ -121,7 +121,7 @@ WallFollower::Settings Turtlebot3Drive::ReadSettings()
 }
 
 // Forward laser data to the controller and record its timing information.
-void Turtlebot3Drive::ScanCallback(
+void CWallFollowerNode::ScanCallback(
     const sensor_msgs::msg::LaserScan::SharedPtr aMessage)
 {
     mWallFollower.UpdateScan(
@@ -141,7 +141,7 @@ void Turtlebot3Drive::ScanCallback(
 }
 
 // Record an odometry history for the RViz Path display.
-void Turtlebot3Drive::OdometryCallback(
+void CWallFollowerNode::OdometryCallback(
     const nav_msgs::msg::Odometry::SharedPtr aMessage)
 {
     const rclcpp::Time SampleTime(
@@ -172,8 +172,8 @@ void Turtlebot3Drive::OdometryCallback(
 }
 
 // Convert the controller's command into the selected ROS velocity message.
-void Turtlebot3Drive::PublishCommand(
-    const WallFollower::Command& aCommand)
+void CWallFollowerNode::PublishCommand(
+    const CWallFollower::Command& aCommand)
 {
     geometry_msgs::msg::Twist Velocity;
     Velocity.linear.x = aCommand.Linear;
@@ -195,9 +195,9 @@ void Turtlebot3Drive::PublishCommand(
 }
 
 // Publish a stop unless a received scan is recent enough for the controller.
-void Turtlebot3Drive::Update()
+void CWallFollowerNode::Update()
 {
-    WallFollower::Command Command;
+    CWallFollower::Command Command;
 
     if (mHaveScan)
     {

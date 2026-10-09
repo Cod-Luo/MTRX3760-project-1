@@ -6,8 +6,8 @@
 #include <vector>
 
 // Converts laser sectors into velocity commands for following a wall on the right.
-// ROS communication is handled separately by Turtlebot3Drive.
-class WallFollower
+// ROS communication is handled separately by CWallFollowerNode.
+class CWallFollower
 {
     public:
         // Distances are metres; speeds are metres/second and radians/second.
@@ -31,7 +31,7 @@ class WallFollower
         };
 
         // Stores and validates settings; invalid settings prevent movement.
-        explicit WallFollower(const Settings& aSettings);
+        explicit CWallFollower(const Settings& aSettings);
 
         // Reports whether the supplied settings are usable.
         bool HasValidSettings() const;
