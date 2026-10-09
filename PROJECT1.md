@@ -2,7 +2,8 @@
 
 This is a local checkout of the official ROBOTIS TurtleBot3 simulations Jazzy branch.
 The initial upstream commit is `45633014a14e8f438495b532a723e4ad45cbbd31`.
-The assignment's `turtlebot3_drive.cpp` is modified in place. This snapshot is prepared
+The assignment's `turtlebot3_drive.cpp` was modified in place for A1, then split into
+classes during the A3 refactor (see Code structure). This snapshot is prepared
 for the group's `Royce` branch, with author name `royce` and a GitHub no-reply email.
 The existing group setup history is preserved; team code review still remains.
 
@@ -34,11 +35,23 @@ is not evidence for A1. It identified and helped fix an overly tight outside-cor
 
 ## Code structure
 
-`turtlebot3_gazebo/src/turtlebot3_drive.cpp` owns ROS publishers, subscribers,
-scan timing, parameters and a computer-recorded odometry path.
-`WallFollower` owns scan interpretation and steering. It reads angular sectors rather
-than assuming that sample indices equal degrees. ROS uses positive angular velocity
-for left turns, unlike the screen coordinates used in the Lab 2 simulator.
+After the A3 refactor each class has one job (headers in
+`turtlebot3_gazebo/include/turtlebot3_gazebo/`, sources in `turtlebot3_gazebo/src/`):
+
+| Class | File | Job |
+| --- | --- | --- |
+| `CWallFollowerNode` | `wall_follower_node` | The ROS node and single top-level owner. Reads parameters, receives scans, runs the 20 Hz update. |
+| `CScanReader` | `scan_reader` | Turns a raw laser scan into front, right and front-right distances. |
+| `CWallFollower` | `wall_follower` | Turns those distances into drive commands using three prioritised rules. |
+| `CVelocityPublisher` | `velocity_publisher` | Sends commands on `cmd_vel` as `Twist` or `TwistStamped`. |
+| `CPathRecorder` | `path_recorder` | Records odometry as an RViz path. Not used for control. |
+
+`main.cpp` only starts the node. The executable is still called `turtlebot3_drive`.
+`CScanReader` and `CWallFollower` do not depend on ROS, so the unit tests use them
+directly. `CScanReader` reads angular sectors rather than assuming that sample indices
+equal degrees, so it works on both the 360-sample simulated lidar and the real LD19
+(0.72 degrees per sample). ROS uses positive angular velocity for left turns, unlike
+the screen coordinates used in the Lab 2 simulator.
 The ROS control timer and path sampling now use ROS time: 20 control updates and
 up to five path samples per simulated second. The independent steady-clock sensor
 receipt watchdog remains, alongside the ROS timestamp-age check. Steering settings
