@@ -139,7 +139,7 @@ void CWallFollowerNode::ScanCallback(
     mHaveScan = true;
 }
 
-// Publish a stop unless a received scan is recent enough for the controller.
+// Fresh unusable scans permit slow recovery; missing or stale input stops.
 void CWallFollowerNode::Update()
 {
     CWallFollower::Command Command;
@@ -177,7 +177,9 @@ void CWallFollowerNode::ReportInputStatus(CWallFollower::DriveStatus aStatus)
                 RCLCPP_ERROR(get_logger(), "Invalid wall-follower settings; motion disabled");
                 break;
             case CWallFollower::InvalidScan:
-                RCLCPP_WARN(get_logger(), "Invalid laser readings or metadata; stopping");
+                RCLCPP_WARN(
+                    get_logger(),
+                    "Invalid laser readings or metadata; creeping forward at up to 0.01 m/s");
                 break;
             case CWallFollower::InvalidScanTime:
                 RCLCPP_WARN(get_logger(), "Invalid laser timestamp or scan age; stopping");

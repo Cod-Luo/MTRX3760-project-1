@@ -2,11 +2,13 @@
 
 #include "turtlebot3_gazebo/wall_follower.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 const double CWallFollower::ScanTimeout = 0.5;
 const double CWallFollower::CornerTurnFraction = 0.5;
 const double CWallFollower::MaxSteeringSlowdown = 0.5;
+const double CWallFollower::InvalidScanSpeed = 0.01;
 
 bool CWallFollower::Settings::IsValid() const
 {
@@ -44,9 +46,10 @@ CWallFollower::Command CWallFollower::CalculateCommand(
     const CScanReader& aScan,
     double aScanAgeSeconds)
 {
-    Command Result;  // Stop unless it is safe to drive.
+    Command Result;  // Missing input, stale data or invalid settings still stop.
+    const DriveStatus Status = CheckInput(aScan, aScanAgeSeconds);
 
-    if (CheckInput(aScan, aScanAgeSeconds) == Ready)
+    if (Status == Ready)
     {
         UpdateFrontBlocked(aScan.FrontDistance());
 
@@ -63,6 +66,12 @@ CWallFollower::Command CWallFollower::CalculateCommand(
             Result = FollowWall(aScan.RightDistance(), aScan.FrontRightDistance());
         }
     }
+    else if (Status == InvalidScan && aScan.HasReceivedScan())
+    {
+        // Keep normal wall following unchanged; unusable scans simply creep.
+        // No timer or attempt limit applies while fresh scans keep arriving.
+        Result.Linear = std::min(InvalidScanSpeed, mSettings.ForwardSpeed);
+    }
 
     return Result;
 }
@@ -75,10 +84,6 @@ CWallFollower::DriveStatus CWallFollower::CheckInput(
     {
         Result = InvalidSettings;
     }
-    else if (!aScan.HasValidReadings())
-    {
-        Result = InvalidScan;
-    }
     else if (!std::isfinite(aScanAgeSeconds) || aScanAgeSeconds < 0.0)
     {
         Result = InvalidScanTime;
@@ -86,6 +91,10 @@ CWallFollower::DriveStatus CWallFollower::CheckInput(
     else if (aScanAgeSeconds > ScanTimeout)
     {
         Result = StaleScan;
+    }
+    else if (!aScan.HasValidReadings())
+    {
+        Result = InvalidScan;
     }
     return Result;
 }

@@ -57,7 +57,7 @@ class CWallFollower
         // Explains why motion is permitted or disabled; does not change steering state.
         DriveStatus CheckInput(const CScanReader& aScan, double aScanAgeSeconds) const;
 
-        // Returns a stop command for missing, invalid or stale scans.
+        // Fresh unusable scans creep forward; missing or stale input stops.
         Command CalculateCommand(const CScanReader& aScan, double aScanAgeSeconds);
 
     private:
@@ -82,6 +82,7 @@ class CWallFollower
         static const double ScanTimeout;          // Maximum scan age, seconds.
         static const double CornerTurnFraction;   // Share of TurnSpeed used when curving.
         static const double MaxSteeringSlowdown;  // Speed lost at full steering.
+        static const double InvalidScanSpeed;     // Straight-ahead recovery, m/s.
 };
 
 #endif

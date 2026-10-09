@@ -83,6 +83,8 @@ class RosNodeTests(unittest.TestCase):
             message.angle_increment = 0.0
         elif kind == 'future':
             message.header.stamp.sec += 10
+        elif kind == 'nan':
+            message.ranges = [float('nan')] * 360
         return message
 
     def pump(self, seconds, kind=None):
@@ -138,8 +140,15 @@ class RosNodeTests(unittest.TestCase):
         self.assertEqual(self.log().count('Laser data is stale; stopping'), 1)
 
         self.pump(0.6, 'invalid')
-        self.assert_stopped()
+        self.assertAlmostEqual(self.commands[-1].twist.linear.x, 0.01)
+        self.assertEqual(self.commands[-1].twist.angular.z, 0.0)
         self.assertEqual(self.log().count('Invalid laser readings or metadata'), 1)
+        self.pump(2.5, 'nan')
+        self.assertAlmostEqual(self.commands[-1].twist.linear.x, 0.01)
+        self.assertEqual(self.commands[-1].twist.angular.z, 0.0)
+        self.assertEqual(self.log().count('Invalid laser readings or metadata'), 1)
+        self.pump(0.9)
+        self.assert_stopped()
         self.pump(0.6, 'future')
         self.assert_stopped()
         self.assertEqual(self.log().count('Invalid laser timestamp or scan age'), 1)

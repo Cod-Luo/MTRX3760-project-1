@@ -24,6 +24,9 @@ class CScanReader
         // True when the latest scan gave a usable reading in every direction.
         bool HasValidReadings() const;
 
+        // Distinguish missing input from a received scan with unusable readings.
+        bool HasReceivedScan() const;
+
         // Distances in metres from the latest scan.
         double FrontDistance() const;
         double RightDistance() const;
@@ -68,6 +71,7 @@ class CScanReader
         Sector mFront;
         Sector mRight;
         Sector mFrontRight;
+        bool mHaveScan = false;
 
         static const double Pi;
         static const SectorShape FrontShape;       // Nearest obstacle ahead.

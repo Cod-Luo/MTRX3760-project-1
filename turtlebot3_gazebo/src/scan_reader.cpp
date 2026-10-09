@@ -29,6 +29,7 @@ void CScanReader::Update(
     mFront = Sector{};
     mRight = Sector{};
     mFrontRight = Sector{};
+    mHaveScan = true;
 
     if (IsUsableScan(aRanges, Info))
     {
@@ -41,6 +42,11 @@ void CScanReader::Update(
 bool CScanReader::HasValidReadings() const
 {
     return mFront.Valid && mRight.Valid && mFrontRight.Valid;
+}
+
+bool CScanReader::HasReceivedScan() const
+{
+    return mHaveScan;
 }
 
 double CScanReader::FrontDistance() const

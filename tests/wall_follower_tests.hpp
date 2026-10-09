@@ -37,6 +37,7 @@ class CWallFollowerTests
         bool CheckSteering() const;
         bool CheckScanValidation() const;
         bool CheckInputStatus() const;
+        bool CheckInvalidScanRecovery() const;
         static double RayDistance(double aX, double aY, double aAngle, const Segment& aWall);
         static double Clearance(double aX, double aY, const Segment& aWall);
         bool CheckMaze(const SensorProfile& aProfile) const;
