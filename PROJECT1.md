@@ -43,7 +43,7 @@ After the A3 refactor each class has one job (headers in
 | `CWallFollowerNode` | `wall_follower_node` | The ROS node and single top-level owner. Reads parameters, receives scans, runs the 20 Hz update. |
 | `CScanReader` | `scan_reader` | Turns a raw laser scan into front, right and front-right distances. |
 | `CWallFollower` | `wall_follower` | Turns those distances into drive commands using three prioritised rules. |
-| `CVelocityPublisher` | `velocity_publisher` | Sends commands on `cmd_vel` as `Twist` or `TwistStamped`. |
+| `CVelocityPublisher` | `velocity_publisher` | Sends timestamped commands on `cmd_vel` as `TwistStamped`. |
 | `CPathRecorder` | `path_recorder` | Records odometry as an RViz path. Not used for control. |
 
 `main.cpp` only starts the node. The executable is still called `turtlebot3_drive`.
@@ -64,9 +64,9 @@ and has no floating rooms. The drive controller does not detect the exit: the se
 validation harness observes Gazebo's model position, pauses the world at the exit and
 stops its own drive process. Ground truth and maze coordinates are never sent to the controller.
 
-The supplied Jazzy bridge uses `TwistStamped`; the controller matches it by default.
-The parameter `use_stamped_velocity:=false` selects `Twist` if a later platform needs it.
-Physical robot operation still requires checking its topic types, tuning and live tests.
+The supplied Jazzy bridge and physical robot use `TwistStamped`; the controller
+always publishes this message type on `cmd_vel`.
+Physical robot operation still requires tuning and live tests.
 
 ## Run development tests now (PowerShell)
 

@@ -31,9 +31,7 @@ const double CWallFollowerNode::UpdatePeriodSeconds = 0.05;  // 20 Hz.
 CWallFollowerNode::CWallFollowerNode()
     : Node(NodeName),
       mWallFollower(ReadSettings()),
-      mVelocityPublisher(
-          *this,
-          declare_parameter<bool>("use_stamped_velocity", true)),
+      mVelocityPublisher(*this),
       mLastScanReceipt(std::chrono::steady_clock::now()),
       mLastScanStamp(0, 0, get_clock()->get_clock_type()),
       mPathRecorder(*this)
