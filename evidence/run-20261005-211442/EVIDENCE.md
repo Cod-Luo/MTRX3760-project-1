@@ -5,7 +5,7 @@ waypoints, map or simulator ground truth fed into the controller.
 The observer verified the robot's Gazebo model position at the exit after 314.6
 seconds of wall time. All three S-maze corridors were visited.
 
-Suggested figure captions (adapt into your own report):
+## Recorded outputs
 
 - **trajectory.png:** Computer-recorded TurtleBot3 right-wall-following trajectory
   through the S-maze. Blue is Gazebo's actual model position; dashed orange is wheel
@@ -28,9 +28,7 @@ distance is 0.2825 m; it does not certify complete-body collision clearance.
 
 The observer completed successfully. The running shell harness's capture stage was
 interrupted by a source edit; it was recovered using `scripts/capture-evidence.sh`.
-No sensor/trajectory values were fabricated or retrospectively modified.
+Recorded sensor and trajectory values were retained.
 
-Still needed: a user-visible RViz screenshot showing laser, camera and path once
-the WSLg display issue is resolved, your report discussion/captions, team review and
-a genuine working commit. A2 physical robot testing is separate. Acknowledge AI
-assistance as required by the assignment.
+This is historical Waffle Pi simulation evidence, separate from current Burger
+verification and physical-robot testing.

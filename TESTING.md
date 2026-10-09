@@ -1,10 +1,9 @@
 # Additional Gazebo tests
 
-Run from the project directory in Ubuntu. The ROS package has already been rebuilt.
+Build from this checkout's root before running the commands below.
 Close any existing project Gazebo launch before starting one of these commands.
 
 ```bash
-cd '/mnt/c/Users/royce/Desktop/USYD MTRX3760/Project1'
 bash scripts/test-scenario.sh branched fast 2
 bash scripts/test-scenario.sh open_track fast 2
 ```
@@ -54,7 +53,23 @@ camera frames, LiDAR CSV/plot, actual simulator poses, odometry, a trajectory pl
 the scenario configuration and measured wall/simulation durations. They do not
 contain a Gazebo GUI screenshot, because no GUI is running.
 
-## Verified runs, 5 October 2026
+## Burger results, 9 October 2026
+
+| Scenario | Ordered checks | Wall time | Measured real-time factor | Sampled origin-to-wall clearance |
+| --- | --- | --- | --- | --- |
+| S-maze | 3/3 and exit | 169.2 s | 0.922 | 0.294 m |
+| Branched maze | 5/5 and exit | 127.6 s | 0.900 | 0.320 m |
+| Open track | 4/4 and finish | 102.8 s | 0.888 | 0.301 m |
+
+All runs passed runtime sensor checks with unchanged steering settings. The
+requested factor was 2; actual measured rates remained below real time.
+Clearance concerns the sampled model origin, not the full robot footprint.
+See [Burger verification](evidence/review-20261009-burger/README.md) for raw data
+and the startup-logging correction after the S-maze run.
+
+## Historical Waffle Pi runs, 5 October 2026
+
+These results use the earlier Waffle Pi configuration, not the current Burger model.
 
 - Open track: `run-20261005-215851-open_track`, all four ordered landmarks and finish
   passed. 79.4 wall seconds / 94.7 simulation seconds; measured average RTF 1.19.
@@ -89,6 +104,13 @@ bash scripts/test-ubuntu.sh
 bash scripts/test-scripts.sh
 ```
 
-Actual Linux C++ build/CTest, existing Windows controller tests, shell/Python syntax
-and three scenario-metadata checks pass. Metadata checks are not runtime navigation
-tests; the measured Gazebo runs above are the runtime evidence.
+Recorded A3 checks passed: normal ROS build and CTest (1/1); Release build with
+`-Werror` and `NDEBUG`, including CTest and three synthetic-scan ROS safety cases;
+the same ROS cases on the final normal build; Windows development checks with
+`-Wall -Wextra -Wpedantic -Werror`; three scenario-metadata and four workspace tests;
+shell/Python syntax and Git whitespace checks.
+
+ROS cases cover invalid/stale/future scans, diagnostics, recovery and received
+zero commands on SIGINT/SIGTERM. Receipt does not prove physical braking.
+Ray-cast tests omit Gazebo dynamics and ROS communication. Metadata tests do not
+demonstrate navigation. Physical performance requires separate testing.

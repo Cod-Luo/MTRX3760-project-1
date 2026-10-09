@@ -1,6 +1,6 @@
 # Burger verification, 9 October 2026
 
-These are actual headless Gazebo runs of the local course-alignment changes based
+These are headless Gazebo runs of the A3 refactor changes based
 on `A3-refactor` commit `e73f4e4`. They are simulation evidence, not physical results.
 
 The model is `burger_cam`: a Burger body with a camera, a 360-sample 5 Hz laser and
@@ -27,4 +27,5 @@ ordered landmarks/exit and then paused and cleaned up its own world/processes.
 The normal project harness remains available as `scripts/test-scenario.sh` with
 `PROJECT1_WORKSPACE` selecting the build.
 
-See `../../COURSE_ALIGNMENT.md` for measured outcomes and build/test details.
+See [testing](../../TESTING.md) for measured outcomes and build/test details,
+and [design](../../DESIGN.md) for the controller structure.
