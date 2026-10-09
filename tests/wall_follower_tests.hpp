@@ -33,11 +33,15 @@ class CWallFollowerTests
         static bool Require(bool aCondition, const std::string& aMessage);
         static std::vector<float> Scan(double aRight, double aFront = 3.5, int aSamples = 360);
         static void Feed(CScanReader& aReader, const std::vector<float>& aRanges);
+        static void InvalidateSector(std::vector<float>& aRanges, int aFirst, int aLast);
         // Test groups deliberately remain small and independently report failures.
         bool CheckSteering() const;
         bool CheckScanValidation() const;
         bool CheckInputStatus() const;
-        bool CheckInvalidScanRecovery() const;
+        bool CheckPersistentRecovery() const;
+        bool CheckMissingDiagonalRecovery() const;
+        bool CheckPartialScanCornerRecovery() const;
+        bool CheckRecoverySpeedLimit() const;
         static double RayDistance(double aX, double aY, double aAngle, const Segment& aWall);
         static double Clearance(double aX, double aY, const Segment& aWall);
         bool CheckMaze(const SensorProfile& aProfile) const;

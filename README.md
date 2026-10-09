@@ -5,9 +5,9 @@ The controller uses laser measurements, not maze geometry or simulator ground tr
 
 ## Branches
 
-- `A3-refactor`: current refactored implementation and Burger camera simulation.
-- `A1-wall-following-logic`: earlier wall-following implementation.
-- `main`: earlier integrated project version.
+- `main`: current controller, including partial-scan recovery and lecture-style C++.
+- `A3-refactor`: historical refactor snapshot before partial-scan recovery.
+- `A1-wall-following-logic`: historical wall-following implementation.
 
 The ROS package is in `turtlebot3_gazebo/`; scripts, tests and saved evidence
 are at the repository root. Each branch documents its own configuration.
@@ -31,6 +31,14 @@ bash scripts/test-scenario.sh s_maze fast 2
 Run scenarios sequentially. Use `view 1` instead of `fast 2` for full-camera
 Gazebo/RViz operation. See the setup guide for workspace and model selection.
 Simulation evidence is separate from physical testing and the live demonstration.
+
+For controller-only checks on Linux or macOS, without ROS installed:
+
+```bash
+bash scripts/test-core.sh
+```
+
+This checks scan processing and steering. It does not build or run the ROS node.
 
 ## Attribution and assistance
 

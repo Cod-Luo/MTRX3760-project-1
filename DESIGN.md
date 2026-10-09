@@ -1,6 +1,6 @@
 # Controller design
 
-The A3 refactor separates ROS integration, scan processing, steering, velocity
+The controller separates ROS integration, scan processing, steering, velocity
 publication and trajectory recording. Headers are in
 `turtlebot3_gazebo/include/turtlebot3_gazebo/`, with implementations in
 `turtlebot3_gazebo/src/`.
@@ -24,6 +24,22 @@ sample indices are degrees. Filtering uses standard containers and `std::sort`.
 The path recorder has private, undefined copy declarations because its callbacks
 depend on a stable object address. `CWallFollowerTests` encapsulates development tests.
 
+The recovery helper uses one final return, ordinary `if`/`else` branches and a named
+speed limit. Its validity queries expose only the information the controller needs.
+The test suite keeps the stateful corner-recovery sequence together and separates
+independent recovery cases into small methods.
+
+These choices follow the supplied lectures:
+
+| Concept | Lecture reference |
+| --- | --- |
+| Small private helper methods | Lec 3A, Project Management, pages 9-11 |
+| One return point per function | Lec 2B, Polymorphism, page 3 |
+| Const references, const methods, constants and embedded types | Lec 4B, Object Oriented Design, pages 3-13 |
+| STL minimum operation and vector sorting | Lec 6A, STL Iterators, Algorithms, pages 12-13 |
+| Smart pointers and `auto` | Lec 4A, C++xx and Pointers, pages 19-23 |
+| ROS callbacks, timers, publishers, subscribers and QoS | Lec 5B, ROS Publishers and Subscribers, pages 12-18 |
+
 ## Timing, diagnostics and stopping
 
 Control updates and path sampling use ROS time. Sensor validation checks ROS
@@ -43,9 +59,12 @@ termination signals; a separate node context remains valid until the loop exits
 and publishes zero velocity, then shuts down. A bounded subscriber-acknowledgement
 wait assists delivery but does not prove that physical wheels have stopped.
 
-The implementation uses ROS lifecycle/context APIs beyond the supplied lecture
-examples. Their eligibility needs confirmation if course restrictions apply to
-individual ROS APIs as well as C++ language features.
+The context, executor and acknowledgement APIs are a deliberate ROS integration
+extension beyond the supplied lecture examples. They are retained to send the
+final stop before closing the publisher's context, without adding authored
+cross-thread callbacks or locks. They are separate from the scan-processing and
+steering algorithm. This lecture mapping does not claim that every ROS API appears
+in the slides or that the implementation has formal course approval.
 
 ## Test boundaries
 

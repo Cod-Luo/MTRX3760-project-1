@@ -76,6 +76,8 @@ CWallFollower::Command CWallFollower::CalculateCommand(
 
 CWallFollower::Command CWallFollower::RecoverFromPartialScan(const CScanReader& aScan)
 {
+    Command Result;
+
     if (aScan.HasValidFrontReading())
     {
         UpdateFrontBlocked(aScan.FrontDistance());
@@ -84,25 +86,30 @@ CWallFollower::Command CWallFollower::RecoverFromPartialScan(const CScanReader& 
     // Missing side readings must not cancel a known blocked-front turn.
     if (mFrontBlocked)
     {
-        return TurnLeftInPlace();
+        Result = TurnLeftInPlace();
     }
-
-    Command Result;
-    Result.Angular = -mSettings.TurnSpeed * CornerTurnFraction;
-
-    // If the front is unknown, rotate to obtain a different view without advancing.
-    if (aScan.HasValidFrontReading())
+    else
     {
-        Result.Linear = std::min(InvalidScanSpeed, mSettings.ForwardSpeed);
+        Result.Angular = -mSettings.TurnSpeed * CornerTurnFraction;
 
-        if (aScan.HasValidRightReading()
-            && aScan.RightDistance() <= mSettings.WallLostDistance)
+        // If the front is unknown, rotate to obtain a different view without advancing.
+        if (aScan.HasValidFrontReading())
         {
-            // Without a diagonal return, use distance control without a heading estimate.
-            const double Diagonal = aScan.HasValidFrontRightReading()
-                ? aScan.FrontRightDistance() : mSettings.WallLostDistance;
-            Result = FollowWall(aScan.RightDistance(), Diagonal);
-            Result.Linear = std::min(Result.Linear, InvalidScanSpeed);
+            Result.Linear = std::min(InvalidScanSpeed, mSettings.ForwardSpeed);
+
+            if (aScan.HasValidRightReading()
+                && aScan.RightDistance() <= mSettings.WallLostDistance)
+            {
+                // Without a diagonal return, use distance control without a heading estimate.
+                double Diagonal = mSettings.WallLostDistance;
+                if (aScan.HasValidFrontRightReading())
+                {
+                    Diagonal = aScan.FrontRightDistance();
+                }
+
+                Result = FollowWall(aScan.RightDistance(), Diagonal);
+                Result.Linear = std::min(Result.Linear, InvalidScanSpeed);
+            }
         }
     }
 

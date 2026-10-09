@@ -1,13 +1,13 @@
 # Setup and operation
 
 ROS 2 Jazzy and Gazebo Harmonic simulation using the `burger_cam` model.
-The current A3 structure is described in [DESIGN.md](DESIGN.md).
+The controller structure and lecture mapping are described in [DESIGN.md](DESIGN.md).
 Recorded build checks and Burger runs are documented in [TESTING.md](TESTING.md).
 Historical Waffle Pi results are listed separately in [evidence notes](evidence/README.md).
 
 ## Code structure
 
-After the A3 refactor each class has one job (headers in
+Each class has one job (headers in
 `turtlebot3_gazebo/include/turtlebot3_gazebo/`, sources in `turtlebot3_gazebo/src/`):
 
 | Class | File | Job |
@@ -116,7 +116,7 @@ SIGINT/SIGTERM. To rerun the installed build's tests, use `bash scripts/test-ubu
 Run non-ROS script/metadata checks with `bash scripts/test-scripts.sh`.
 A Windows test alone is not a ROS build.
 
-## Launch the A1 simulation
+## Launch the simulation
 
 In an Ubuntu terminal:
 

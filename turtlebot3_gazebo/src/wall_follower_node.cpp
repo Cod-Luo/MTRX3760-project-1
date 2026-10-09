@@ -181,9 +181,9 @@ void CWallFollowerNode::ReportInputStatus(CWallFollower::DriveStatus aStatus)
                     get_logger(),
                     "Invalid laser readings or metadata; turning recovery "
                     "(front=%s, right=%s, diagonal=%s)",
-                    mScanReader.HasValidFrontReading() ? "valid" : "invalid",
-                    mScanReader.HasValidRightReading() ? "valid" : "invalid",
-                    mScanReader.HasValidFrontRightReading() ? "valid" : "invalid");
+                    ReadingStatus(mScanReader.HasValidFrontReading()),
+                    ReadingStatus(mScanReader.HasValidRightReading()),
+                    ReadingStatus(mScanReader.HasValidFrontRightReading()));
                 break;
             case CWallFollower::InvalidScanTime:
                 RCLCPP_WARN(get_logger(), "Invalid laser timestamp or scan age; stopping");
@@ -195,4 +195,14 @@ void CWallFollowerNode::ReportInputStatus(CWallFollower::DriveStatus aStatus)
         mInputStatus = aStatus;
         mHaveInputStatus = true;
     }
+}
+
+const char* CWallFollowerNode::ReadingStatus(bool aValid)
+{
+    const char* pResult = "invalid";
+    if (aValid)
+    {
+        pResult = "valid";
+    }
+    return pResult;
 }
