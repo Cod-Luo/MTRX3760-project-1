@@ -25,9 +25,10 @@ from scenario_config import in_bounds, load_scenario
 
 
 class MazeObserver(Node):
-    def __init__(self, output, scenario, requested_rate):
+    def __init__(self, output, scenario, requested_rate, model):
         super().__init__('project1_maze_observer')
         self.output = output
+        self.model = model  # Gazebo entity name of the robot to track.
         self.started = time.monotonic()
         self.scenario = scenario
         self.requested_rate = requested_rate
@@ -77,7 +78,7 @@ class MazeObserver(Node):
                     continue
                 message = json.loads(line)
                 for pose in message.get('pose', []):
-                    if pose.get('name') != 'waffle_pi':
+                    if pose.get('name') != self.model:
                         continue
                     position = pose.get('position', {})
                     x, y = float(position.get('x', 0)), float(position.get('y', 0))
@@ -235,10 +236,12 @@ def main():
     parser.add_argument('--seconds', type=float, default=600.0)
     parser.add_argument('--scenario', default='s_maze')
     parser.add_argument('--rate', type=float, default=1.0)
+    parser.add_argument('--model', default=os.environ.get('TURTLEBOT3_MODEL', 'burger_cam'),
+                        help='Robot entity name in Gazebo; run-ros.sh sets TURTLEBOT3_MODEL')
     args = parser.parse_args()
     args.output.mkdir(parents=True, exist_ok=True)
     rclpy.init()
-    node = MazeObserver(args.output, load_scenario(args.scenario), args.rate)
+    node = MazeObserver(args.output, load_scenario(args.scenario), args.rate, args.model)
     def request_stop(signum, frame):
         node.stop_requested = True
     signal.signal(signal.SIGTERM, request_stop)

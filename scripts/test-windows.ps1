@@ -14,6 +14,7 @@ $Executable = Join-Path $TestOutput 'wall_follower_test.exe'
 & $Compiler -std=c++17 -Wall -Wextra -Wpedantic -Werror -O2 `
     -I (Join-Path $ProjectRoot 'turtlebot3_gazebo\include') `
     (Join-Path $ProjectRoot 'turtlebot3_gazebo\src\wall_follower.cpp') `
+    (Join-Path $ProjectRoot 'turtlebot3_gazebo\src\scan_reader.cpp') `
     (Join-Path $ProjectRoot 'tests\wall_follower_test.cpp') -o $Executable
 
 if ($LASTEXITCODE -ne 0)

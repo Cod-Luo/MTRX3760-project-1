@@ -1,7 +1,14 @@
 # Simulation evidence snapshot
 
-These are historical Waffle Pi simulation runs, not results for the current plain
-Burger default or physical robot. New runs remain ignored by Git until selected.
+Saved simulation runs are grouped by configuration. New runs remain ignored by
+Git until selected for inclusion. These records do not establish physical performance.
+
+All dated October 5 runs listed here used the earlier Waffle Pi configuration, not
+the current `A3-refactor` Burger camera default. They remain historical Waffle Pi
+evidence; current verification is documented in [testing](../TESTING.md).
+
+`review-20261009-burger/` contains Burger camera runs for the A3 refactor, separately from the historical Waffle snapshots. Its README records the
+configuration and the minor startup-logging correction made after its S-maze run.
 
 | Run | Purpose and interpretation |
 | --- | --- |

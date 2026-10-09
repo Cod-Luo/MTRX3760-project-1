@@ -5,6 +5,7 @@ test-output/
 # Keep new/generated runs local; preserve the verified development snapshot below.
 evidence/*
 !evidence/README.md
+!evidence/review-20261009-burger/
 !evidence/run-20261005-210427/
 !evidence/run-20261005-211442/
 !evidence/run-20261005-213255/

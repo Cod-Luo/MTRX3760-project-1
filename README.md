@@ -5,19 +5,19 @@ The controller uses laser measurements, not maze geometry or simulator ground tr
 
 ## Branches
 
-- `A3-refactor`: current refactored implementation and Burger camera simulation.
+- `main`: final integrated implementation and Burger camera simulation.
+- `A3-refactor`: development branch containing the tested refactor.
 - `A1-wall-following-logic`: earlier wall-following implementation.
-- `main`: earlier integrated project version.
 
-This branch retains the earlier implementation. Use `A3-refactor` for the current
-working refactor. The ROS package is in `turtlebot3_gazebo/`; scripts, tests and
-evidence are at the repository root.
+The ROS package is in `turtlebot3_gazebo/`; scripts, tests and saved evidence
+are at the repository root. Each branch documents its own configuration.
 
 ## Documentation
 
 - [Setup and operation](PROJECT1.md)
 - [Testing and measured results](TESTING.md)
 - [Saved simulation evidence](evidence/README.md)
+- [Controller design](DESIGN.md)
 
 ## Quick start
 
@@ -25,11 +25,11 @@ From the repository root in Ubuntu 24.04 with ROS 2 Jazzy and Gazebo Harmonic in
 
 ```bash
 bash scripts/build-ubuntu.sh
-bash scripts/run-ros.sh ros2 launch turtlebot3_gazebo project1_maze.launch.py
+bash scripts/test-scenario.sh s_maze fast 2
 ```
 
-The older wrapper selects a plain Burger without a camera. See the setup guide
-for a camera-equipped manual launch; use A3 for current automated scenario tests.
+Run scenarios sequentially. Use `view 1` instead of `fast 2` for full-camera
+Gazebo/RViz operation. See the setup guide for workspace and model selection.
 Simulation evidence is separate from physical testing and the live demonstration.
 
 ## Attribution and assistance
@@ -39,5 +39,6 @@ The simulator is based on ROBOTIS TurtleBot3 simulations, Jazzy source snapshot
 and the repository licence are retained.
 
 OpenAI ChatGPT/Codex assisted with implementation, code review, test tooling and
-documentation. The assessment report should
+documentation. The A3 review included shutdown sequencing, validation diagnostics,
+workspace selection and regression-test organisation. The assessment report should
 describe this assistance accurately; edited material requires team review and validation.

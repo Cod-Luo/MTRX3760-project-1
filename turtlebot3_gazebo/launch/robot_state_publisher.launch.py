@@ -56,7 +56,10 @@ def generate_launch_description():
             parameters=[{
                 'use_sim_time': use_sim_time,
                 'robot_description': robot_desc,
-                'frame_prefix': PythonExpression(["'", frame_prefix, "/'"])
+                # Add the '/' separator only when a prefix is given; an empty prefix
+                # must stay empty so frame names match Gazebo's (base_scan, not /base_scan).
+                'frame_prefix': PythonExpression(
+                    ["'", frame_prefix, "/' if '", frame_prefix, "' else ''"])
             }],
         ),
     ])

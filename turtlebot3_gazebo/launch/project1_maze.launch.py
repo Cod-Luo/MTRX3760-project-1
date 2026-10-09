@@ -15,9 +15,13 @@ from launch_ros.actions import Node
 
 
 def launch_scenario(context):
-    model = os.environ.get('TURTLEBOT3_MODEL', 'burger')
-    os.environ['TURTLEBOT3_MODEL'] = model
     package = get_package_share_directory('turtlebot3_gazebo')
+    # The simulation model is chosen here, not from the user's TURTLEBOT3_MODEL,
+    # which is set to burger for the real robot and has no simulated camera.
+    model = LaunchConfiguration('model').perform(context)
+    if not os.path.isfile(os.path.join(package, 'urdf', 'turtlebot3_' + model + '.urdf')):
+        raise RuntimeError(f'Unknown TurtleBot3 model: {model}')
+    os.environ['TURTLEBOT3_MODEL'] = model  # Read by spawn_turtlebot3.launch.py.
     gazebo = get_package_share_directory('ros_gz_sim')
     launch_dir = os.path.join(package, 'launch')
     with open(os.path.join(package, 'params', 'project1_scenarios.json'), encoding='utf-8') as source:
@@ -50,7 +54,9 @@ def launch_scenario(context):
         temporary = tempfile.TemporaryDirectory(prefix='mtrx3760-camera-')
         atexit.register(temporary.cleanup)
         robot = ET.parse(os.path.join(package, 'models', 'turtlebot3_' + model, 'model.sdf'))
-        for sensor in robot.findall('.//sensor[@type="camera"]'):
+        # BurgerCam's Pi camera is a wideanglecamera, so handle both camera types.
+        cameras = robot.findall('.//sensor[@type="camera"]') + robot.findall('.//sensor[@type="wideanglecamera"]')
+        for sensor in cameras:
             sensor.find('update_rate').text = '10'
             sensor.find('camera/image/width').text = '320'
             sensor.find('camera/image/height').text = '240'
@@ -62,7 +68,7 @@ def launch_scenario(context):
         launch_arguments=spawn_arguments.items())
     drive = Node(
         package='turtlebot3_gazebo', executable='turtlebot3_drive', output='screen',
-        parameters=[{'use_sim_time': True, 'use_stamped_velocity': True}],
+        parameters=[{'use_sim_time': True}],
         condition=IfCondition(controller))
     display = Node(
         package='rviz2', executable='rviz2', output='screen',
@@ -79,6 +85,8 @@ def launch_scenario(context):
 
 def generate_launch_description():
     return LaunchDescription([
+        DeclareLaunchArgument('model', default_value=os.environ.get('PROJECT1_SIM_MODEL', 'burger_cam'),
+                              description='Simulated robot; burger_cam is a Burger with the lab camera'),
         DeclareLaunchArgument('scenario', default_value='s_maze',
                               description='s_maze, branched or open_track'),
         DeclareLaunchArgument('fast', default_value='false',

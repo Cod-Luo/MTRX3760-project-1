@@ -2,7 +2,8 @@
 # Build the Gazebo package using this checkout and a Linux-filesystem workspace.
 set -eo pipefail
 project_source=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
-project_workspace=${1:-"$HOME/project1_ws"}
+source "$project_source/scripts/workspace.sh"
+project_workspace=${1:-"$project_workspace"}
 source /opt/ros/jazzy/setup.bash
 mkdir -p "$project_workspace"
 cd "$project_workspace"

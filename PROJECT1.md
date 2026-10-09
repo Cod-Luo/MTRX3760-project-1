@@ -1,20 +1,43 @@
-# Setup and operation: earlier implementation
+# Setup and operation
 
-This branch retains the two-class wall-following implementation. The current
-refactor and verified Burger camera tests are on `A3-refactor`.
-Historical Waffle Pi runs are listed in [evidence notes](evidence/README.md).
+ROS 2 Jazzy and Gazebo Harmonic simulation using the `burger_cam` model.
+The controller structure is described in [DESIGN.md](DESIGN.md).
+Recorded build checks and Burger runs are documented in [TESTING.md](TESTING.md).
+Historical Waffle Pi results are listed separately in [evidence notes](evidence/README.md).
 
 ## Code structure
 
-`turtlebot3_gazebo/src/turtlebot3_drive.cpp` owns ROS publishers, subscribers,
-scan timing, parameters and a computer-recorded odometry path.
-`WallFollower` owns scan interpretation and steering. It reads angular sectors rather
-than assuming that sample indices equal degrees. ROS uses positive angular velocity
-for left turns, unlike the screen coordinates used in the Lab 2 simulator.
+After the A3 refactor each class has one job (headers in
+`turtlebot3_gazebo/include/turtlebot3_gazebo/`, sources in `turtlebot3_gazebo/src/`):
+
+| Class | File | Job |
+| --- | --- | --- |
+| `CWallFollowerNode` | `wall_follower_node` | The ROS node and single top-level owner. Reads parameters, receives scans, runs the 20 Hz update. |
+| `CScanReader` | `scan_reader` | Turns a raw laser scan into front, right and front-right distances. |
+| `CWallFollower` | `wall_follower` | Turns those distances into drive commands using three prioritised rules. |
+| `CVelocityPublisher` | `velocity_publisher` | Sends timestamped commands on `cmd_vel` as `TwistStamped`. |
+| `CPathRecorder` | `path_recorder` | Records odometry as an RViz path. Not used for control. |
+
+`main.cpp` owns ROS startup and shutdown. The executable is still called `turtlebot3_drive`.
+`CScanReader` and `CWallFollower` do not depend on ROS, so the unit tests use them
+directly. `CScanReader` reads angular sectors rather than assuming that sample indices
+equal degrees, so it works on both the 360-sample simulated lidar and the real LD19
+(0.72 degrees per sample). ROS uses positive angular velocity for left turns, unlike
+the screen coordinates used in the Lab 2 simulator.
 The ROS control timer and path sampling now use ROS time: 20 control updates and
 up to five path samples per simulated second. The independent steady-clock sensor
 receipt watchdog remains, alongside the ROS timestamp-age check. Steering settings
 and the original S-maze geometry are unchanged.
+
+The node reports invalid settings, invalid scans, invalid timestamps, stale scans
+and recovery once per state change. These runtime checks remain active in release
+builds. The initial waiting-for-laser message explains why startup produces zero velocity.
+
+All control callbacks execute on the main thread. ROS's default context receives
+Ctrl+C/SIGTERM; the node uses a separate context kept alive until its loop ends and
+sends zero velocity. Only then does main shut down the control context. There is no
+authored mutex or cross-thread publishing hook. A bounded reliable-subscriber
+acknowledgement wait helps delivery, but cannot prove that physical wheels stopped.
 
 The controller follows a wall on its right, turns left when the front is blocked,
 and curves right when it loses the wall. Invalid or stale scans stop motion.
@@ -23,9 +46,9 @@ and has no floating rooms. The drive controller does not detect the exit: the se
 validation harness observes Gazebo's model position, pauses the world at the exit and
 stops its own drive process. Ground truth and maze coordinates are never sent to the controller.
 
-The supplied Jazzy bridge uses `TwistStamped`; the controller matches it by default.
-The parameter `use_stamped_velocity:=false` selects `Twist` if a later platform needs it.
-Physical robot operation still requires checking its topic types, tuning and live tests.
+The supplied Jazzy simulation bridge expects `TwistStamped`; the controller publishes
+this type on `cmd_vel`. Before physical operation, check the actual robot with
+`ros2 topic info /cmd_vel --verbose`. Physical operation still requires tuning and live tests.
 
 ## Windows development checks
 
@@ -39,12 +62,13 @@ The test executable is ignored by Git. Tests cover steering signs, front-obstacl
 hysteresis, wall loss, missing/invalid/stale scans, scan angle wrapping, different scan
 resolutions and invalid settings. The closed-loop tests ray-cast the supplied maze's
 wall centrelines and check exit traversal plus collision clearance. Observed minimum
-centre-to-wall clearance was 0.259 m (ideal readings) and 0.269 m (model sensor settings).
+centre-to-wall clearance was 0.259 m (ideal readings), 0.269 m (Waffle profile) and
+0.272 m (Burger profile). This simplified clearance is not a full-footprint certificate.
 
 ## Requirements
 
 Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic, and the dependencies declared in
-`turtlebot3_gazebo/package.xml`. Visible operation requires a desktop display or WSLg.
+`turtlebot3_gazebo/package.xml`. Visible runs require a desktop display or WSLg.
 `scripts/install-ros-jazzy.sh` provides the installation procedure.
 
 References:
@@ -62,10 +86,26 @@ Linux filesystem for better performance:
 bash scripts/build-ubuntu.sh
 ```
 
-The runtime wrapper uses `$HOME/project1_ws`. Build into that default workspace
-when using this older wrapper. The script builds the actual ROS node,
-runs CTest and reports its JUnit result. To rerun only the installed build's tests,
-use `bash scripts/test-ubuntu.sh`. A Windows test alone is not a ROS build.
+The default workspace is `$HOME/project1_ws`. For a separate workspace, set the same
+environment variable in every terminal used for this checkout:
+
+```bash
+export PROJECT1_WORKSPACE="$HOME/project1_a3_ws"
+bash scripts/build-ubuntu.sh
+bash scripts/run-ros.sh ros2 pkg prefix turtlebot3_gazebo
+```
+
+Build, test and runtime scripts share this setting through `scripts/workspace.sh`.
+The build script still accepts a workspace argument, but that argument affects only
+that invocation; export `PROJECT1_WORKSPACE` for subsequent runtime commands.
+The runtime wrapper prints the package prefix and rejects workspaces built from
+another checkout. Rebuild after source edits; the wrapper is not an automatic builder.
+
+The script builds the actual ROS node, runs CTest and reports its JUnit result. It also
+runs synthetic-scan ROS tests for diagnostics, recovery and final stop delivery under
+SIGINT/SIGTERM. To rerun the installed build's tests, use `bash scripts/test-ubuntu.sh`.
+Run non-ROS script/metadata checks with `bash scripts/test-scripts.sh`.
+A Windows test alone is not a ROS build.
 
 ## Launch the A1 simulation
 
@@ -75,20 +115,14 @@ In an Ubuntu terminal:
 bash scripts/run-ros.sh ros2 launch turtlebot3_gazebo project1_maze.launch.py
 ```
 
-This launches Gazebo and RViz with a stationary plain `burger`, which has no camera.
-For a camera-equipped manual launch, override the model after the wrapper sets its
-environment:
+This launches Gazebo and RViz with a stationary robot. The default model is `burger_cam`:
+the lab's Burger with a Pi camera, so it provides both the simulated laser and camera.
+Choose another model with `model:=burger` (no camera) or by exporting
+`PROJECT1_SIM_MODEL`. Your own `TURTLEBOT3_MODEL=burger` (needed for the real robot)
+does not change the simulated model. RViz uses `odom` and displays `/scan`,
+`/camera/image_raw`, the robot and `/wall_follower/path`.
 
-```bash
-bash scripts/run-ros.sh env TURTLEBOT3_MODEL=burger_cam ros2 launch turtlebot3_gazebo project1_maze.launch.py
-```
-
-RViz uses `odom` and displays `/scan`, `/camera/image_raw`, the robot and
-`/wall_follower/path`. Use `A3-refactor` for current automated camera-backed tests;
-this branch's scenario wrapper selects a plain Burger and camera-readiness checks
-may time out with that default.
-
-`run-ros.sh` sources ROS/workspace setup and selects model `burger`, ROS domain 76,
+`run-ros.sh` sources ROS/workspace setup and selects model `burger_cam` (or `PROJECT1_SIM_MODEL`), ROS domain 76,
 localhost discovery and Gazebo partition `mtrx3760_project1_76`. Use it for every
 ROS/Gazebo command in this project so terminals connect to the same isolated scene.
 Only run one copy of the maze launch at a time. Stop it with Ctrl+C before a fresh run;
@@ -121,11 +155,10 @@ robot's spawn origin rather than the Gazebo world origin.
 
 ## Recorded evidence
 
-Saved runs contain camera frames, laser data, ground-truth and wheel-odometry
-CSVs, trajectory plots and JSON summaries. The saved October 5 runs used the
-earlier Waffle Pi configuration, not this branch's current plain Burger default.
+The harness saves camera frames, laser data, ground-truth and wheel-odometry CSVs,
+trajectory plots and JSON summaries under `evidence/run-<timestamp>-<scenario>/`.
+New runs are ignored by Git until selected. Headless runs have no GUI screenshot.
 See [evidence notes](evidence/README.md) for configurations and capture provenance.
-New runs remain ignored by Git until selected for inclusion.
 
 RViz's green `/wall_follower/path` line is recorded from wheel odometry, not drawn by hand.
 The node retains the full path at up to five samples per second for a short maze run.
@@ -152,11 +185,7 @@ bash scripts/run-ros.sh ros2 topic pub --once /cmd_vel geometry_msgs/msg/TwistSt
 Simulation evidence cannot establish physical-robot or live-demo performance.
 See [attribution and assistance](README.md#attribution-and-assistance).
 
-## Scenario harness
-
-The following commands document the harness interface. They require a camera-equipped
-configuration; the current plain Burger default does not provide camera messages.
-Use `A3-refactor` for the maintained camera-backed scenario workflow.
+## Additional worlds and faster tests
 
 World selection is `scenario:=s_maze`, `scenario:=branched` or `scenario:=open_track`.
 The original S-maze file is unchanged. `project1_branched.world` adds a T-junction,
@@ -226,7 +255,7 @@ https://github.com/gazebosim/gz-sim/blob/gz-sim8/src/SimulationRunner.cc
 
 Invisible `[WARN: COPY MODE]` windows have been observed alongside shared-memory
 I/O errors and `use_gfxredir = 0` in `/mnt/wslg/weston.log`. Restarting WSL restored
-graphics redirection in recorded development sessions.
+graphics redirection in the recorded development sessions.
 
 Save all WSL work and stop the simulation before running `wsl --shutdown` in
 PowerShell, then reopen Ubuntu. This stops every WSL distribution and session.
