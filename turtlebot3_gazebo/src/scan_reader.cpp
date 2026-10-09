@@ -49,6 +49,21 @@ bool CScanReader::HasReceivedScan() const
     return mHaveScan;
 }
 
+bool CScanReader::HasValidFrontReading() const
+{
+    return mFront.Valid;
+}
+
+bool CScanReader::HasValidRightReading() const
+{
+    return mRight.Valid;
+}
+
+bool CScanReader::HasValidFrontRightReading() const
+{
+    return mFrontRight.Valid;
+}
+
 double CScanReader::FrontDistance() const
 {
     return mFront.Distance;

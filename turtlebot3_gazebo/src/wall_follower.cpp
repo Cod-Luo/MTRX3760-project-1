@@ -68,11 +68,45 @@ CWallFollower::Command CWallFollower::CalculateCommand(
     }
     else if (Status == InvalidScan && aScan.HasReceivedScan())
     {
-        // Keep normal wall following unchanged; unusable scans simply creep.
-        // No timer or attempt limit applies while fresh scans keep arriving.
-        Result.Linear = std::min(InvalidScanSpeed, mSettings.ForwardSpeed);
+        Result = RecoverFromPartialScan(aScan);
     }
 
+    return Result;
+}
+
+CWallFollower::Command CWallFollower::RecoverFromPartialScan(const CScanReader& aScan)
+{
+    if (aScan.HasValidFrontReading())
+    {
+        UpdateFrontBlocked(aScan.FrontDistance());
+    }
+
+    // Missing side readings must not cancel a known blocked-front turn.
+    if (mFrontBlocked)
+    {
+        return TurnLeftInPlace();
+    }
+
+    Command Result;
+    Result.Angular = -mSettings.TurnSpeed * CornerTurnFraction;
+
+    // If the front is unknown, rotate to obtain a different view without advancing.
+    if (aScan.HasValidFrontReading())
+    {
+        Result.Linear = std::min(InvalidScanSpeed, mSettings.ForwardSpeed);
+
+        if (aScan.HasValidRightReading()
+            && aScan.RightDistance() <= mSettings.WallLostDistance)
+        {
+            // Without a diagonal return, use distance control without a heading estimate.
+            const double Diagonal = aScan.HasValidFrontRightReading()
+                ? aScan.FrontRightDistance() : mSettings.WallLostDistance;
+            Result = FollowWall(aScan.RightDistance(), Diagonal);
+            Result.Linear = std::min(Result.Linear, InvalidScanSpeed);
+        }
+    }
+
+    // No recovery timer: the next usable scan immediately restores normal control.
     return Result;
 }
 

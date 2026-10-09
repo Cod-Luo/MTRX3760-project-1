@@ -40,13 +40,16 @@ authored mutex or cross-thread publishing hook. A bounded reliable-subscriber
 acknowledgement wait helps delivery, but cannot prove that physical wheels stopped.
 
 The controller follows a wall on its right, turns left when the front is blocked,
-and curves right when it loses the wall. Received unusable scans creep straight
-ahead at 0.01 m/s (capped by a lower configured forward speed), without a recovery
-timer or attempt limit. The original wall-following rules and range filtering
-are unchanged for usable scans. Normal control resumes on the next usable scan.
-Missing scans, stale data, invalid
-timestamps and invalid settings still stop motion. The creep fallback can move
-without obstacle information; it needs physical testing before the demonstration.
+and curves right when it loses the wall. A partial scan no longer cancels a corner
+turn: a valid blocked front still turns left, and a missing right wall triggers a
+rightward search. A valid right distance still allows distance correction when the
+diagonal is missing. Forward motion during partial-scan recovery is capped at
+0.01 m/s and the configured forward speed. If the front reading is unusable, the
+robot rotates without advancing, continuing a previously blocked-front left turn
+or otherwise searching right. There is no recovery timer or attempt limit.
+The original rules and range filtering are unchanged for fully usable scans.
+Missing scans, stale data, invalid timestamps and invalid settings still stop
+motion. Partial-scan recovery needs physical testing before the demonstration.
 It receives no waypoints or maze geometry. The maze assumes a wall beside the start
 and has no floating rooms. The drive controller does not detect the exit: the separate
 validation harness observes Gazebo's model position, pauses the world at the exit and

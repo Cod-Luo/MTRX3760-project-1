@@ -98,9 +98,13 @@ bool CWallFollowerTests::CheckScanValidation() const
     CWallFollower Follower(CWallFollower::Settings{});
     CScanReader Reader;
     Feed(Reader, std::vector<float>(LaserSamples, std::numeric_limits<float>::quiet_NaN()));
-    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.01, "Fresh NaN scan should creep") && Result;
+    auto Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "Fresh NaN scan should search right without advancing") && Result;
     Feed(Reader, std::vector<float>(LaserSamples, -std::numeric_limits<float>::infinity()));
-    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.01, "An unusable negative-infinity scan should use the creep fallback") && Result;
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "An unusable negative-infinity scan should rotate to search") && Result;
     Feed(Reader, std::vector<float>(LaserSamples, std::numeric_limits<float>::infinity()));
     Result = Require(Follower.CalculateCommand(Reader, 0.0).Angular < 0.0, "Positive infinity should mean clear space") && Result;
     Feed(Reader, Scan(0.35, 3.5, 720));
@@ -110,7 +114,9 @@ bool CWallFollowerTests::CheckScanValidation() const
     Reader.Update(Wrapped, 0.0, 2.0 * Pi / LaserSamples, MinimumRange, MaximumRange);
     Result = Require(Follower.CalculateCommand(Reader, 0.0).Angular > 0.0, "0-to-2pi angle wrapping failed") && Result;
     Reader.Update(Wrapped, 0.0, 0.0, MinimumRange, MaximumRange);
-    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.01, "Fresh invalid metadata should creep") && Result;
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "Fresh invalid metadata should rotate without advancing") && Result;
     if (Result)
     {
         std::cout << "PASS: range validation, metadata, resolutions and angle wrapping\n";
@@ -174,8 +180,8 @@ bool CWallFollowerTests::CheckInvalidScanRecovery() const
     {
         Feed(Reader, Invalid);
         Command = Follower.CalculateCommand(Reader, 0.0);
-        Result = Require(Command.Linear == 0.01 && Command.Angular == 0.0,
-            "Repeated fresh invalid scans must creep without a recovery time limit") && Result;
+        Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+            "Repeated fresh invalid scans must keep searching without a recovery time limit") && Result;
     }
 
     const std::vector<double> StopAges = {
@@ -196,8 +202,28 @@ bool CWallFollowerTests::CheckInvalidScanRecovery() const
     }
     Feed(Reader, Partial);
     Command = Follower.CalculateCommand(Reader, 0.0);
-    Result = Require(Command.Linear == 0.01 && Command.Angular == 0.0,
-        "An unusable diagonal sector should enable straight-ahead creep") && Result;
+    Result = Require(Command.Linear == 0.01 && std::abs(Command.Angular) < 0.03,
+        "A missing diagonal should still use the valid right-wall distance") && Result;
+
+    Partial = Scan(0.20);
+    for (int Index = 128; Index <= 142; ++Index)
+    {
+        Partial[static_cast<std::size_t>(Index)] = std::numeric_limits<float>::quiet_NaN();
+    }
+    Feed(Reader, Partial);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.01 && Command.Angular > 0.0,
+        "A missing diagonal must not discard right-wall distance corrections") && Result;
+
+    Partial = Scan(3.5);
+    for (int Index = 128; Index <= 142; ++Index)
+    {
+        Partial[static_cast<std::size_t>(Index)] = std::numeric_limits<float>::quiet_NaN();
+    }
+    Feed(Reader, Partial);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.01 && Command.Angular < 0.0,
+        "Losing the wall with an invalid diagonal must still turn right") && Result;
 
     Partial = Scan(0.35, 0.25);
     for (int Index = 80; Index <= 100; ++Index)
@@ -206,8 +232,39 @@ bool CWallFollowerTests::CheckInvalidScanRecovery() const
     }
     Feed(Reader, Partial);
     Command = Follower.CalculateCommand(Reader, 0.0);
-    Result = Require(Command.Linear == 0.01 && Command.Angular == 0.0,
-        "A missing right sector should use the same simple creep fallback") && Result;
+    Result = Require(Reader.HasValidFrontReading() && !Reader.HasValidRightReading()
+        && Command.Linear == 0.0 && Command.Angular > 0.0,
+        "At a T-junction, a missing right sector must not cancel a blocked-front turn") && Result;
+
+    Feed(Reader, Invalid);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular > 0.0,
+        "An unknown front must preserve a previously blocked-front turn") && Result;
+
+    Partial = Scan(0.35, 0.45);
+    for (int Index = 80; Index <= 100; ++Index)
+    {
+        Partial[static_cast<std::size_t>(Index)] = std::numeric_limits<float>::quiet_NaN();
+    }
+    Feed(Reader, Partial);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular > 0.0,
+        "Partial scans must preserve blocked-front hysteresis") && Result;
+
+    Partial = Scan(0.35, 0.60);
+    for (int Index = 80; Index <= 100; ++Index)
+    {
+        Partial[static_cast<std::size_t>(Index)] = std::numeric_limits<float>::quiet_NaN();
+    }
+    Feed(Reader, Partial);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.01 && Command.Angular < 0.0,
+        "Once the front clears, a missing right wall must trigger a rightward search") && Result;
+
+    Feed(Reader, Invalid);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "With no blocked-front state, an unknown front must search without advancing") && Result;
 
     Feed(Reader, Scan(0.35));
     Command = Follower.CalculateCommand(Reader, 0.0);
@@ -217,18 +274,18 @@ bool CWallFollowerTests::CheckInvalidScanRecovery() const
     CWallFollower::Settings SlowSettings;
     SlowSettings.ForwardSpeed = 0.005;
     CWallFollower SlowFollower(SlowSettings);
-    Feed(Reader, Invalid);
+    Feed(Reader, Partial);
     Command = SlowFollower.CalculateCommand(Reader, 0.0);
     Result = Require(Command.Linear == 0.005,
         "Recovery must not exceed a lower configured forward speed") && Result;
     Reader.Update({}, 0.0, 0.0, MinimumRange, MaximumRange);
     Command = Follower.CalculateCommand(Reader, 0.0);
-    Result = Require(Command.Linear == 0.01 && Command.Angular == 0.0,
-        "An empty received scan must use the requested creep fallback") && Result;
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "An empty received scan must search without advancing") && Result;
 
     if (Result)
     {
-        std::cout << "PASS: persistent invalid-scan creep and return to normal control\n";
+        std::cout << "PASS: partial-scan corner turns, persistent search and return to normal control\n";
     }
     return Result;
 }

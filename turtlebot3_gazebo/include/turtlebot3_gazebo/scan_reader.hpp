@@ -24,6 +24,11 @@ class CScanReader
         // True when the latest scan gave a usable reading in every direction.
         bool HasValidReadings() const;
 
+        // Partial scans can still identify a front obstacle or the right wall.
+        bool HasValidFrontReading() const;
+        bool HasValidRightReading() const;
+        bool HasValidFrontRightReading() const;
+
         // Distinguish missing input from a received scan with unusable readings.
         bool HasReceivedScan() const;
 

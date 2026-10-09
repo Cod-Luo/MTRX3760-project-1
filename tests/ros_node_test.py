@@ -85,6 +85,12 @@ class RosNodeTests(unittest.TestCase):
             message.header.stamp.sec += 10
         elif kind == 'nan':
             message.ranges = [float('nan')] * 360
+        elif kind in ('blocked_missing_right', 'clear_missing_right'):
+            front = 0.25 if kind == 'blocked_missing_right' else 0.6
+            for index in range(160, 201):
+                message.ranges[index] = front
+            for index in range(80, 101):
+                message.ranges[index] = float('nan')
         return message
 
     def pump(self, seconds, kind=None):
@@ -140,12 +146,12 @@ class RosNodeTests(unittest.TestCase):
         self.assertEqual(self.log().count('Laser data is stale; stopping'), 1)
 
         self.pump(0.6, 'invalid')
-        self.assertAlmostEqual(self.commands[-1].twist.linear.x, 0.01)
-        self.assertEqual(self.commands[-1].twist.angular.z, 0.0)
+        self.assertEqual(self.commands[-1].twist.linear.x, 0.0)
+        self.assertLess(self.commands[-1].twist.angular.z, 0.0)
         self.assertEqual(self.log().count('Invalid laser readings or metadata'), 1)
         self.pump(2.5, 'nan')
-        self.assertAlmostEqual(self.commands[-1].twist.linear.x, 0.01)
-        self.assertEqual(self.commands[-1].twist.angular.z, 0.0)
+        self.assertEqual(self.commands[-1].twist.linear.x, 0.0)
+        self.assertLess(self.commands[-1].twist.angular.z, 0.0)
         self.assertEqual(self.log().count('Invalid laser readings or metadata'), 1)
         self.pump(0.9)
         self.assert_stopped()
@@ -156,6 +162,26 @@ class RosNodeTests(unittest.TestCase):
                       'Valid data did not restore motion', kind='valid')
         self.assertEqual(self.log().count('Usable laser data received; motion enabled'), 2)
         self.assert_shutdown(signal.SIGINT)
+
+    def test_partial_scans_do_not_cancel_corner_turns(self):
+        self.start()
+        self.pump(0.8, 'blocked_missing_right')
+        self.assertEqual(self.commands[-1].twist.linear.x, 0.0)
+        self.assertGreater(self.commands[-1].twist.angular.z, 0.0)
+        self.assertIn('front=valid, right=invalid', self.log())
+
+        self.pump(0.8, 'nan')
+        self.assertEqual(self.commands[-1].twist.linear.x, 0.0)
+        self.assertGreater(self.commands[-1].twist.angular.z, 0.0)
+
+        self.pump(0.8, 'clear_missing_right')
+        self.assertAlmostEqual(self.commands[-1].twist.linear.x, 0.01)
+        self.assertLess(self.commands[-1].twist.angular.z, 0.0)
+
+        self.pump(0.8, 'valid')
+        self.assertGreater(self.commands[-1].twist.linear.x, 0.01)
+        self.assertLess(self.commands[-1].twist.angular.z, 0.0)
+        self.assert_shutdown(signal.SIGTERM)
 
     def test_sigterm_delivers_stop(self):
         self.start()

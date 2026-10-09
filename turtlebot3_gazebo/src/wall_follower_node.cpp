@@ -139,7 +139,7 @@ void CWallFollowerNode::ScanCallback(
     mHaveScan = true;
 }
 
-// Fresh unusable scans permit slow recovery; missing or stale input stops.
+// Fresh partial scans retain steering recovery; missing or stale input stops.
 void CWallFollowerNode::Update()
 {
     CWallFollower::Command Command;
@@ -179,7 +179,11 @@ void CWallFollowerNode::ReportInputStatus(CWallFollower::DriveStatus aStatus)
             case CWallFollower::InvalidScan:
                 RCLCPP_WARN(
                     get_logger(),
-                    "Invalid laser readings or metadata; creeping forward at up to 0.01 m/s");
+                    "Invalid laser readings or metadata; turning recovery "
+                    "(front=%s, right=%s, diagonal=%s)",
+                    mScanReader.HasValidFrontReading() ? "valid" : "invalid",
+                    mScanReader.HasValidRightReading() ? "valid" : "invalid",
+                    mScanReader.HasValidFrontRightReading() ? "valid" : "invalid");
                 break;
             case CWallFollower::InvalidScanTime:
                 RCLCPP_WARN(get_logger(), "Invalid laser timestamp or scan age; stopping");

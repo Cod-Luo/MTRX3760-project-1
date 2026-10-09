@@ -28,8 +28,12 @@ depend on a stable object address. `CWallFollowerTests` encapsulates development
 
 Control updates and path sampling use ROS time. Sensor validation checks ROS
 timestamp age and steady-clock receipt age. Invalid settings, timestamps, missing
-input and stale data command zero velocity. Fresh unusable scans instead creep
-straight ahead at up to 0.01 m/s, with no recovery timer or attempt limit.
+input and stale data command zero velocity. Fresh partial scans retain steering:
+blocked-front turns keep priority, a missing right wall triggers rightward search,
+and a missing diagonal still permits right-distance control. Forward recovery is
+capped at 0.01 m/s; an unknown front allows rotation only. A previously blocked
+front retains its left turn until a valid front reading clears it. Recovery has
+no timer or attempt limit.
 Usable scans restore the original wall-following behaviour, including its obstacle
 turns and range filtering. Diagnostics report state changes.
 These checks remain enabled in Release builds.

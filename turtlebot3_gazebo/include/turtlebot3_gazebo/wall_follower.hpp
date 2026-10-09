@@ -57,10 +57,13 @@ class CWallFollower
         // Explains why motion is permitted or disabled; does not change steering state.
         DriveStatus CheckInput(const CScanReader& aScan, double aScanAgeSeconds) const;
 
-        // Fresh unusable scans creep forward; missing or stale input stops.
+        // Fresh partial scans retain corner steering; missing or stale input stops.
         Command CalculateCommand(const CScanReader& aScan, double aScanAgeSeconds);
 
     private:
+        // Use available sectors instead of cancelling a turn on partial scans.
+        Command RecoverFromPartialScan(const CScanReader& aScan);
+
         // Uses separate stop and resume distances so the robot does not flick
         // between turning and driving when the front distance hovers near one value.
         void UpdateFrontBlocked(double aFrontDistance);
@@ -82,7 +85,7 @@ class CWallFollower
         static const double ScanTimeout;          // Maximum scan age, seconds.
         static const double CornerTurnFraction;   // Share of TurnSpeed used when curving.
         static const double MaxSteeringSlowdown;  // Speed lost at full steering.
-        static const double InvalidScanSpeed;     // Straight-ahead recovery, m/s.
+        static const double InvalidScanSpeed;     // Maximum partial-scan driving, m/s.
 };
 
 #endif
