@@ -120,11 +120,14 @@ cd '/mnt/c/Users/royce/Desktop/USYD MTRX3760/Project1'
 bash scripts/run-ros.sh ros2 launch turtlebot3_gazebo project1_maze.launch.py
 ```
 
-This launches Gazebo and RViz with a stationary robot. `waffle_pi` provides both
-the simulated laser and camera. RViz uses `odom` and displays `/scan`,
+This launches Gazebo and RViz with a stationary robot. The default model is `burger_cam`:
+the lab's Burger with a Pi camera, so it provides both the simulated laser and camera.
+Choose another model with `model:=burger` (no camera) or by exporting
+`PROJECT1_SIM_MODEL`. Your own `TURTLEBOT3_MODEL=burger` (needed for the real robot)
+does not change the simulated model. RViz uses `odom` and displays `/scan`,
 `/camera/image_raw`, the robot and `/wall_follower/path`.
 
-`run-ros.sh` sources ROS/workspace setup and selects model `waffle_pi`, ROS domain 76,
+`run-ros.sh` sources ROS/workspace setup and selects model `burger_cam` (or `PROJECT1_SIM_MODEL`), ROS domain 76,
 localhost discovery and Gazebo partition `mtrx3760_project1_76`. Use it for every
 ROS/Gazebo command in this project so terminals connect to the same isolated scene.
 Only run one copy of the maze launch at a time. Stop it with Ctrl+C before a fresh run;
