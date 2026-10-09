@@ -93,11 +93,11 @@ CWallFollower::Settings CWallFollowerNode::ReadSettings()
     return Settings;
 }
 
-// Forward laser data to the controller and record its timing information.
+// Pass laser data to the scan reader and record its timing information.
 void CWallFollowerNode::ScanCallback(
     const sensor_msgs::msg::LaserScan::SharedPtr aMessage)
 {
-    mWallFollower.UpdateScan(
+    mScanReader.Update(
         aMessage->ranges,
         aMessage->angle_min,
         aMessage->angle_increment,
@@ -128,6 +128,7 @@ void CWallFollowerNode::Update()
         if (StampAge >= 0.0)
         {
             Command = mWallFollower.CalculateCommand(
+                mScanReader,
                 std::max(ReceiptAge, StampAge));
         }
     }

@@ -50,7 +50,7 @@ include_directories(
 
 set(EXEC_NAME "turtlebot3_drive")
 
-add_executable(${EXEC_NAME} src/main.cpp src/wall_follower_node.cpp src/wall_follower.cpp src/path_recorder.cpp src/velocity_publisher.cpp)
+add_executable(${EXEC_NAME} src/main.cpp src/wall_follower_node.cpp src/wall_follower.cpp src/scan_reader.cpp src/path_recorder.cpp src/velocity_publisher.cpp)
 target_link_libraries(${EXEC_NAME}
   ${geometry_msgs_TARGETS}
   ${nav_msgs_TARGETS}
@@ -108,7 +108,7 @@ ament_export_dependencies(
 option(BUILD_TESTING "Build controller development tests" ON)
 if(BUILD_TESTING)
   enable_testing()
-  add_executable(wall_follower_test src/wall_follower.cpp ../tests/wall_follower_test.cpp)
+  add_executable(wall_follower_test src/wall_follower.cpp src/scan_reader.cpp ../tests/wall_follower_test.cpp)
   add_test(NAME wall_follower_core COMMAND wall_follower_test)
 endif()
 

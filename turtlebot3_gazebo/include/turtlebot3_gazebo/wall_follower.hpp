@@ -1,12 +1,12 @@
-// wall_follower.hpp - Interface for sensor-based right-wall following.
+// wall_follower.hpp - Decides how to drive to follow a wall on the right.
 
 #ifndef TURTLEBOT3_GAZEBO_WALL_FOLLOWER_HPP
 #define TURTLEBOT3_GAZEBO_WALL_FOLLOWER_HPP
 
-#include <vector>
+#include "turtlebot3_gazebo/scan_reader.hpp"
 
-// Converts laser sectors into velocity commands for following a wall on the right.
-// ROS communication is handled separately by CWallFollowerNode.
+// Converts front and right wall distances into velocity commands for following
+// a wall on the right. Knows nothing about ROS; CWallFollowerNode connects it.
 class CWallFollower
 {
     public:
@@ -36,47 +36,16 @@ class CWallFollower
         // Reports whether the supplied settings are usable.
         bool HasValidSettings() const;
 
-        // Updates distances using the scan's angular and range information.
-        void UpdateScan(
-            const std::vector<float>& aRanges,
-            double aAngleMin,
-            double aAngleIncrement,
-            double aRangeMin,
-            double aRangeMax);
-
         // Returns a stop command for missing, invalid or stale scans.
-        Command CalculateCommand(double aScanAgeSeconds);
+        Command CalculateCommand(const CScanReader& aScan, double aScanAgeSeconds);
 
     private:
-        // A sector is usable only when it contains a valid laser return.
-        struct Sector
-        {
-            double Distance = 0.0;
-            bool Valid = false;
-        };
-
-        // Selects the minimum or median usable distance within a laser sector.
-        static Sector ReadSector(
-            const std::vector<float>& aRanges,
-            double aAngleMin,
-            double aAngleIncrement,
-            double aRangeMin,
-            double aRangeMax,
-            double aCentre,
-            double aHalfWidth,
-            bool aUseMinimum);
-
         const Settings mSettings;  // Fixed after construction.
         bool mSettingsValid;       // False disables all movement.
-
-        Sector mFront;
-        Sector mRight;
-        Sector mFrontRight;
 
         // Keeps a blocked-front turn active until the resume distance is reached.
         bool mTurningLeft = false;
 
-        static const double Pi;
         static const double ScanTimeout;  // Maximum scan age in seconds.
 };
 

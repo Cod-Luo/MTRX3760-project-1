@@ -20,6 +20,7 @@
 #define TURTLEBOT3_GAZEBO_WALL_FOLLOWER_NODE_HPP
 
 #include "turtlebot3_gazebo/path_recorder.hpp"
+#include "turtlebot3_gazebo/scan_reader.hpp"
 #include "turtlebot3_gazebo/velocity_publisher.hpp"
 #include "turtlebot3_gazebo/wall_follower.hpp"
 
@@ -37,14 +38,15 @@ class CWallFollowerNode : public rclcpp::Node
         // Reads startup parameters; settings are fixed for this node instance.
         CWallFollower::Settings ReadSettings();
 
-        // Updates laser sectors and records receipt and measurement times.
+        // Updates the scan reader and records receipt and measurement times.
         void ScanCallback(
             const sensor_msgs::msg::LaserScan::SharedPtr aMessage);
 
         // Calculates and publishes commands using the latest usable scan.
         void Update();
 
-        CWallFollower mWallFollower;
+        CScanReader mScanReader;      // Turns laser scans into wall distances.
+        CWallFollower mWallFollower;  // Turns wall distances into drive commands.
 
         // Sends the controller's commands to the wheels.
         CVelocityPublisher mVelocityPublisher;
