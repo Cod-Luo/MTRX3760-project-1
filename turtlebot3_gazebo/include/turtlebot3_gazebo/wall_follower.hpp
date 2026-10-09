@@ -7,30 +7,38 @@
 
 // Converts front and right wall distances into velocity commands for following
 // a wall on the right. Knows nothing about ROS; CWallFollowerNode connects it.
+//
+// Rules, highest priority first:
+//   1. Front blocked        -> turn left on the spot
+//   2. Right wall lost      -> curve right to find it again
+//   3. Otherwise            -> steer to hold the target distance from the wall
 class CWallFollower
 {
     public:
         // Distances are metres; speeds are metres/second and radians/second.
         struct Settings
         {
-            double WallDistance = 0.35;
-            double ForwardSpeed = 0.15;
-            double TurnSpeed = 0.65;
-            double FrontStopDistance = 0.40;
-            double FrontResumeDistance = 0.50;
-            double WallLostDistance = 0.90;
-            double DistanceGain = 2.0;
-            double HeadingGain = 1.2;
+            double WallDistance = 0.35;         // Target gap to the right wall.
+            double ForwardSpeed = 0.15;         // Top driving speed.
+            double TurnSpeed = 0.65;            // Top turning speed.
+            double FrontStopDistance = 0.40;    // Start turning left below this.
+            double FrontResumeDistance = 0.50;  // Stop turning left above this.
+            double WallLostDistance = 0.90;     // Right wall counts as gone above this.
+            double DistanceGain = 2.0;          // Steering per metre of distance error.
+            double HeadingGain = 1.2;           // Steering per radian of wall angle.
+
+            // True when every value is finite and the values make sense together.
+            bool IsValid() const;
         };
 
         // Velocity requested by the controller; defaults to stopping.
         struct Command
         {
-            double Linear = 0.0;
-            double Angular = 0.0;
+            double Linear = 0.0;   // Forward, metres/second.
+            double Angular = 0.0;  // Positive turns left, radians/second.
         };
 
-        // Stores and validates settings; invalid settings prevent movement.
+        // Stores the settings; invalid settings prevent all movement.
         explicit CWallFollower(const Settings& aSettings);
 
         // Reports whether the supplied settings are usable.
@@ -40,13 +48,30 @@ class CWallFollower
         Command CalculateCommand(const CScanReader& aScan, double aScanAgeSeconds);
 
     private:
+        // True only for valid settings and a recent scan with readings in every direction.
+        bool CanDrive(const CScanReader& aScan, double aScanAgeSeconds) const;
+
+        // Uses separate stop and resume distances so the robot does not flick
+        // between turning and driving when the front distance hovers near one value.
+        void UpdateFrontBlocked(double aFrontDistance);
+
+        // Rule 1: a wall is ahead, so turn left on the spot.
+        Command TurnLeftInPlace() const;
+
+        // Rule 2: the right wall has ended, so curve right around the corner.
+        Command CurveRightToFindWall() const;
+
+        // Rule 3: steer to hold the target distance and stay parallel to the wall.
+        Command FollowWall(double aRightDistance, double aFrontRightDistance) const;
+
         const Settings mSettings;  // Fixed after construction.
-        bool mSettingsValid;       // False disables all movement.
 
-        // Keeps a blocked-front turn active until the resume distance is reached.
-        bool mTurningLeft = false;
+        // Keeps a blocked-front turn going until the resume distance is reached.
+        bool mFrontBlocked = false;
 
-        static const double ScanTimeout;  // Maximum scan age in seconds.
+        static const double ScanTimeout;          // Maximum scan age, seconds.
+        static const double CornerTurnFraction;   // Share of TurnSpeed used when curving.
+        static const double MaxSteeringSlowdown;  // Speed lost at full steering.
 };
 
 #endif

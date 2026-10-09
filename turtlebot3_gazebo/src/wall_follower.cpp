@@ -2,119 +2,139 @@
 
 #include "turtlebot3_gazebo/wall_follower.hpp"
 
-#include <algorithm>
 #include <cmath>
 
 const double CWallFollower::ScanTimeout = 0.5;
+const double CWallFollower::CornerTurnFraction = 0.5;
+const double CWallFollower::MaxSteeringSlowdown = 0.5;
+
+bool CWallFollower::Settings::IsValid() const
+{
+    return std::isfinite(WallDistance)
+        && std::isfinite(ForwardSpeed)
+        && std::isfinite(TurnSpeed)
+        && std::isfinite(FrontStopDistance)
+        && std::isfinite(FrontResumeDistance)
+        && std::isfinite(WallLostDistance)
+        && std::isfinite(DistanceGain)
+        && std::isfinite(HeadingGain)
+        && WallDistance > 0.0
+        && ForwardSpeed > 0.0
+        && TurnSpeed > 0.0
+        && FrontStopDistance > 0.0
+        && FrontResumeDistance > FrontStopDistance
+        && WallLostDistance > WallDistance
+        && DistanceGain > 0.0
+        && HeadingGain >= 0.0;
+}
 
 // Invalid settings disable movement without using exception handling.
 CWallFollower::CWallFollower(const Settings& aSettings)
     : mSettings(aSettings)
 {
-    mSettingsValid =
-        std::isfinite(mSettings.WallDistance)
-        && std::isfinite(mSettings.ForwardSpeed)
-        && std::isfinite(mSettings.TurnSpeed)
-        && std::isfinite(mSettings.FrontStopDistance)
-        && std::isfinite(mSettings.FrontResumeDistance)
-        && std::isfinite(mSettings.WallLostDistance)
-        && std::isfinite(mSettings.DistanceGain)
-        && std::isfinite(mSettings.HeadingGain)
-        && mSettings.WallDistance > 0.0
-        && mSettings.ForwardSpeed > 0.0
-        && mSettings.TurnSpeed > 0.0
-        && mSettings.FrontStopDistance > 0.0
-        && mSettings.FrontResumeDistance > mSettings.FrontStopDistance
-        && mSettings.WallLostDistance > mSettings.WallDistance
-        && mSettings.DistanceGain > 0.0
-        && mSettings.HeadingGain >= 0.0;
 }
 
 bool CWallFollower::HasValidSettings() const
 {
-    return mSettingsValid;
+    return mSettings.IsValid();
 }
 
-// Collect usable returns inside the sector, then select its minimum or median.
-// Replace old sectors so an invalid scan cannot reuse previous distances.
-// Prioritise front clearance, then wall reacquisition, then normal wall tracking.
+// Pick one of the three rules, in priority order.
 CWallFollower::Command CWallFollower::CalculateCommand(
     const CScanReader& aScan,
     double aScanAgeSeconds)
 {
-    Command Result;
+    Command Result;  // Stop unless it is safe to drive.
 
-    const bool ScanUsable =
-        mSettingsValid
+    if (CanDrive(aScan, aScanAgeSeconds))
+    {
+        UpdateFrontBlocked(aScan.FrontDistance());
+
+        if (mFrontBlocked)
+        {
+            Result = TurnLeftInPlace();
+        }
+        else if (aScan.RightDistance() > mSettings.WallLostDistance)
+        {
+            Result = CurveRightToFindWall();
+        }
+        else
+        {
+            Result = FollowWall(aScan.RightDistance(), aScan.FrontRightDistance());
+        }
+    }
+
+    return Result;
+}
+
+bool CWallFollower::CanDrive(const CScanReader& aScan, double aScanAgeSeconds) const
+{
+    return mSettings.IsValid()
         && aScan.HasValidReadings()
         && std::isfinite(aScanAgeSeconds)
         && aScanAgeSeconds >= 0.0
         && aScanAgeSeconds <= ScanTimeout;
+}
 
-    if (ScanUsable)
+void CWallFollower::UpdateFrontBlocked(double aFrontDistance)
+{
+    mFrontBlocked =
+        aFrontDistance < mSettings.FrontStopDistance
+        || (mFrontBlocked && aFrontDistance < mSettings.FrontResumeDistance);
+}
+
+CWallFollower::Command CWallFollower::TurnLeftInPlace() const
+{
+    Command Result;
+    Result.Angular = mSettings.TurnSpeed;  // Positive turns left in ROS.
+    return Result;
+}
+
+CWallFollower::Command CWallFollower::CurveRightToFindWall() const
+{
+    Command Result;
+    Result.Linear = mSettings.ForwardSpeed;
+    Result.Angular = -mSettings.TurnSpeed * CornerTurnFraction;
+    return Result;
+}
+
+CWallFollower::Command CWallFollower::FollowWall(
+    double aRightDistance,
+    double aFrontRightDistance) const
+{
+    double WallAngle = 0.0;
+
+    if (aFrontRightDistance < mSettings.WallLostDistance)
     {
-        const double Front = aScan.FrontDistance();
-        const double Right = aScan.RightDistance();
-        const double FrontRight = aScan.FrontRightDistance();
+        // Estimate wall alignment from the right and diagonal returns.
+        const double DiagonalComponent = aFrontRightDistance / std::sqrt(2.0);
 
-        // Separate stop and resume distances prevent rapid behaviour switching.
-        mTurningLeft =
-            Front < mSettings.FrontStopDistance
-            || (
-                mTurningLeft
-                && Front < mSettings.FrontResumeDistance);
-
-        if (mTurningLeft)
-        {
-            // Turn left on the spot until the front becomes clear.
-            Result.Angular = mSettings.TurnSpeed;
-        }
-        else if (Right > mSettings.WallLostDistance)
-        {
-            // Curve right to reacquire the wall around an outside corner.
-            Result.Linear = mSettings.ForwardSpeed;
-            Result.Angular = -mSettings.TurnSpeed * 0.5;
-        }
-        else
-        {
-            double WallAngle = 0.0;
-
-            if (FrontRight < mSettings.WallLostDistance)
-            {
-                // Estimate wall alignment from the right and diagonal returns.
-                const double DiagonalComponent =
-                    FrontRight / std::sqrt(2.0);
-
-                WallAngle = std::atan2(
-                    DiagonalComponent - Right,
-                    DiagonalComponent);
-            }
-
-            const double DistanceError =
-                mSettings.WallDistance - Right;
-
-            // Positive angular velocity turns left in ROS coordinates.
-            Result.Angular =
-                mSettings.DistanceGain * DistanceError
-                - mSettings.HeadingGain * WallAngle;
-
-            // Limit steering to the configured maximum turn speed.
-            if (Result.Angular > mSettings.TurnSpeed)
-            {
-                Result.Angular = mSettings.TurnSpeed;
-            }
-            else if (Result.Angular < -mSettings.TurnSpeed)
-            {
-                Result.Angular = -mSettings.TurnSpeed;
-            }
-
-            // Reduce forward speed while making stronger steering corrections.
-            const double SpeedFraction =
-                1.0 - 0.5 * std::abs(Result.Angular) / mSettings.TurnSpeed;
-
-            Result.Linear = mSettings.ForwardSpeed * SpeedFraction;
-        }
+        WallAngle = std::atan2(
+            DiagonalComponent - aRightDistance,
+            DiagonalComponent);
     }
 
+    const double DistanceError = mSettings.WallDistance - aRightDistance;
+
+    Command Result;
+    Result.Angular =
+        mSettings.DistanceGain * DistanceError
+        - mSettings.HeadingGain * WallAngle;
+
+    // Limit steering to the configured maximum turn speed.
+    if (Result.Angular > mSettings.TurnSpeed)
+    {
+        Result.Angular = mSettings.TurnSpeed;
+    }
+    else if (Result.Angular < -mSettings.TurnSpeed)
+    {
+        Result.Angular = -mSettings.TurnSpeed;
+    }
+
+    // Slow down while making stronger steering corrections.
+    const double SpeedFraction =
+        1.0 - MaxSteeringSlowdown * std::abs(Result.Angular) / mSettings.TurnSpeed;
+
+    Result.Linear = mSettings.ForwardSpeed * SpeedFraction;
     return Result;
 }
