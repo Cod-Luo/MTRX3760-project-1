@@ -1,36 +1,8 @@
-# MTRX3760 Project 1: A1 simulation work
+# Setup and operation: earlier implementation
 
-This is a local checkout of the official ROBOTIS TurtleBot3 simulations Jazzy branch.
-The initial upstream commit is `45633014a14e8f438495b532a723e4ad45cbbd31`.
-The assignment's `turtlebot3_drive.cpp` is modified in place. This snapshot is prepared
-for the group's `Royce` branch, with author name `royce` and a GitHub no-reply email.
-The existing group setup history is preserved; team code review still remains.
-
-## Current status
-
-- Right-wall-following C++ controller implemented.
-- Windows development tests pass, including a sensor-driven traversal of an idealised S-maze.
-- Ubuntu 24.04 WSL2, ROS Jazzy desktop and Gazebo Harmonic installed.
-- Actual ROS C++ build and CTest pass (1 test, 0 failures).
-- Gazebo and RViz run through WSLg; simulated 360-sample LiDAR and 640 x 480 camera verified.
-- Ground-truth-verified autonomous traversal passed: all three corridors visited and
-  east exit reached in 314.6 seconds of wall time (run `20261005-211442`).
-- Evidence saved: 1,532 laser messages, 3,905 camera frames, 1,388 RViz path poses,
-  2,668 plotted ground-truth samples, scene/camera screenshots and LiDAR plot.
-- WSLg initially had a shared-memory I/O failure and invisible `[WARN: COPY MODE]`
-  windows. After saving evidence and restarting WSL, its log confirms graphics
-  redirection is enabled (`use_gfxredir = 1`). You subsequently confirmed both windows
-  and supplied screenshots of a second successful run (`20261005-213255`).
-- Separate branched-maze and open-track worlds added; scenario-aware validation
-  checks ordered landmarks before accepting each scenario's own exit region.
-- Both new worlds and the original S-maze passed measured fast-mode Gazebo runs
-  with unchanged steering settings (79.4 s, 100.4 s and 129.0 s respectively).
-- A1 report assembly/captions, team review and A2 physical testing remain.
-
-The native Windows ray-cast tests check controller logic. One uses ideal readings;
-another includes the supplied model's laser mounting offset, 10 Hz sampling and
-seeded 0.01 m Gaussian noise. Both omit Gazebo physics, actuator dynamics and ROS communication. Their success
-is not evidence for A1. It identified and helped fix an overly tight outside-corner turn.
+This branch retains the two-class wall-following implementation. The current
+refactor and verified Burger camera tests are on `A3-refactor`.
+Historical Waffle Pi runs are listed in [evidence notes](evidence/README.md).
 
 ## Code structure
 
@@ -55,10 +27,12 @@ The supplied Jazzy bridge uses `TwistStamped`; the controller matches it by defa
 The parameter `use_stamped_velocity:=false` selects `Twist` if a later platform needs it.
 Physical robot operation still requires checking its topic types, tuning and live tests.
 
-## Run development tests now (PowerShell)
+## Windows development checks
+
+Run from this checkout's root:
 
 ```powershell
-& '.\Project1\scripts\test-windows.ps1'
+& '.\scripts\test-windows.ps1'
 ```
 
 The test executable is ignored by Git. Tests cover steering signs, front-obstacle
@@ -67,18 +41,13 @@ resolutions and invalid settings. The closed-loop tests ray-cast the supplied ma
 wall centrelines and check exit traversal plus collision clearance. Observed minimum
 centre-to-wall clearance was 0.259 m (ideal readings) and 0.269 m (model sensor settings).
 
-## Installed environment
+## Requirements
 
-Ubuntu-24.04 is installed and the normal Linux account is `royce`.
-To enter it from PowerShell:
+Ubuntu 24.04, ROS 2 Jazzy, Gazebo Harmonic, and the dependencies declared in
+`turtlebot3_gazebo/package.xml`. Visible operation requires a desktop display or WSLg.
+`scripts/install-ros-jazzy.sh` provides the installation procedure.
 
-```powershell
-wsl --distribution Ubuntu-24.04
-```
-
-Keep your Linux password private. `scripts/install-ros-jazzy.sh` has already been
-executed successfully; it is retained for reproducibility, not needed each time.
-It follows the official ROS apt-source instructions. References:
+References:
 
 - https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html
 - https://gazebosim.org/docs/harmonic/ros_installation/
@@ -90,11 +59,11 @@ Use the checkout on the Windows drive as the source, but keep build outputs on t
 Linux filesystem for better performance:
 
 ```bash
-cd '/mnt/c/Users/royce/Desktop/USYD MTRX3760/Project1'
 bash scripts/build-ubuntu.sh
 ```
 
-The workspace is `/home/royce/project1_ws`. The script builds the actual ROS node,
+The runtime wrapper uses `$HOME/project1_ws`. Build into that default workspace
+when using this older wrapper. The script builds the actual ROS node,
 runs CTest and reports its JUnit result. To rerun only the installed build's tests,
 use `bash scripts/test-ubuntu.sh`. A Windows test alone is not a ROS build.
 
@@ -103,15 +72,23 @@ use `bash scripts/test-ubuntu.sh`. A Windows test alone is not a ROS build.
 In an Ubuntu terminal:
 
 ```bash
-cd '/mnt/c/Users/royce/Desktop/USYD MTRX3760/Project1'
 bash scripts/run-ros.sh ros2 launch turtlebot3_gazebo project1_maze.launch.py
 ```
 
-This launches Gazebo and RViz with a stationary robot. `waffle_pi` provides both
-the simulated laser and camera. RViz uses `odom` and displays `/scan`,
-`/camera/image_raw`, the robot and `/wall_follower/path`.
+This launches Gazebo and RViz with a stationary plain `burger`, which has no camera.
+For a camera-equipped manual launch, override the model after the wrapper sets its
+environment:
 
-`run-ros.sh` sources ROS/workspace setup and selects model `waffle_pi`, ROS domain 76,
+```bash
+bash scripts/run-ros.sh env TURTLEBOT3_MODEL=burger_cam ros2 launch turtlebot3_gazebo project1_maze.launch.py
+```
+
+RViz uses `odom` and displays `/scan`, `/camera/image_raw`, the robot and
+`/wall_follower/path`. Use `A3-refactor` for current automated camera-backed tests;
+this branch's scenario wrapper selects a plain Burger and camera-readiness checks
+may time out with that default.
+
+`run-ros.sh` sources ROS/workspace setup and selects model `burger`, ROS domain 76,
 localhost discovery and Gazebo partition `mtrx3760_project1_76`. Use it for every
 ROS/Gazebo command in this project so terminals connect to the same isolated scene.
 Only run one copy of the maze launch at a time. Stop it with Ctrl+C before a fresh run;
@@ -142,29 +119,13 @@ and the opening on the east side. These coordinates configure the test world;
 the controller does not receive them. Odometry/path coordinates may start at the
 robot's spawn origin rather than the Gazebo world origin.
 
-## A1 evidence and remaining handoff
+## Recorded evidence
 
-The harness creates `evidence/run-YYYYMMDD-HHMMSS/` with actual camera frames,
-laser readings, Gazebo scene screenshot, ground-truth and wheel-odometry CSVs,
-a computer-plotted trajectory and JSON summaries. Build outputs and new evidence
-runs are ignored by Git; the saved runs listed in `evidence/README.md` are included
-in this publishing snapshot.
-
-Use `evidence/run-20261005-211442/` for the verified run. `run-summary.json` reports
-the actual exit at (4.0005, 2.0094) m. Minimum recorded model-origin-to-wall-surface
-distance was 0.2825 m. This is not the minimum clearance of every point on the robot.
-The earlier `run-20261005-210427` used drifting odometry for its exit check; it is
-development evidence only and should not be used as the accurate route figure.
-
-This run's observer completed successfully, but editing the running shell harness
-interrupted its final capture stage. Capture/plotting were then executed separately
-and verified. The current harness calls that same capture helper after the observer.
-Do not edit a shell script while it is running.
-
-You have supplied RViz and Gazebo screenshots for run `20261005-213255` (381.5
-wall seconds, successful exit); include them with its saved trajectory plot.
-Add descriptive report captions and the start/right-wall assumption.
-Preserve a team-reviewed working commit and genuine development history.
+Saved runs contain camera frames, laser data, ground-truth and wheel-odometry
+CSVs, trajectory plots and JSON summaries. The saved October 5 runs used the
+earlier Waffle Pi configuration, not this branch's current plain Burger default.
+See [evidence notes](evidence/README.md) for configurations and capture provenance.
+New runs remain ignored by Git until selected for inclusion.
 
 RViz's green `/wall_follower/path` line is recorded from wheel odometry, not drawn by hand.
 The node retains the full path at up to five samples per second for a short maze run.
@@ -188,10 +149,14 @@ then publish a zero command:
 bash scripts/run-ros.sh ros2 topic pub --once /cmd_vel geometry_msgs/msg/TwistStamped '{twist: {linear: {x: 0.0}, angular: {z: 0.0}}}'
 ```
 
-The final report must acknowledge AI assistance as required by the assignment.
-A2 still requires the real robot: simulation evidence cannot substitute for live testing.
+Simulation evidence cannot establish physical-robot or live-demo performance.
+See [attribution and assistance](README.md#attribution-and-assistance).
 
-## Additional worlds and faster tests
+## Scenario harness
+
+The following commands document the harness interface. They require a camera-equipped
+configuration; the current plain Burger default does not provide camera messages.
+Use `A3-refactor` for the maintained camera-backed scenario workflow.
 
 World selection is `scenario:=s_maze`, `scenario:=branched` or `scenario:=open_track`.
 The original S-maze file is unchanged. `project1_branched.world` adds a T-junction,
@@ -257,11 +222,11 @@ replace running the robot in Gazebo.
 Gazebo Harmonic timing implementation/reference:
 https://github.com/gazebosim/gz-sim/blob/gz-sim8/src/SimulationRunner.cc
 
-## If WSLg shows invisible `[WARN: COPY MODE]` windows
+## WSLg display troubleshooting
 
-In this session `/mnt/wslg/weston.log` showed shared-memory allocation failing with
-an I/O error and `use_gfxredir = 0`, while Gazebo's own screenshot renderer still worked.
-After saving the run and closing our launch, `wsl --shutdown` reset WSLg; its next log
-showed `use_gfxredir = 1`. This stops **all** WSL sessions, so save work first and do
-not run it during a simulation or while other WSL tasks are active.
-No Mesa PPA, driver replacement or shared-memory mount workaround was applied.
+Invisible `[WARN: COPY MODE]` windows have been observed alongside shared-memory
+I/O errors and `use_gfxredir = 0` in `/mnt/wslg/weston.log`. Restarting WSL restored
+graphics redirection in recorded development sessions.
+
+Save all WSL work and stop the simulation before running `wsl --shutdown` in
+PowerShell, then reopen Ubuntu. This stops every WSL distribution and session.

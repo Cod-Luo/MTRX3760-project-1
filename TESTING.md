@@ -1,10 +1,12 @@
 # Additional Gazebo tests
 
-Run from the project directory in Ubuntu. The ROS package has already been rebuilt.
+Build from this checkout's root before using the harness. The commands below
+require a camera-equipped model. This older branch selects a plain Burger, so
+camera-readiness checks may time out; use `A3-refactor` for the maintained
+camera-backed workflow. Historical results below used Waffle Pi.
 Close any existing project Gazebo launch before starting one of these commands.
 
 ```bash
-cd '/mnt/c/Users/royce/Desktop/USYD MTRX3760/Project1'
 bash scripts/test-scenario.sh branched fast 2
 bash scripts/test-scenario.sh open_track fast 2
 ```
@@ -54,7 +56,7 @@ camera frames, LiDAR CSV/plot, actual simulator poses, odometry, a trajectory pl
 the scenario configuration and measured wall/simulation durations. They do not
 contain a Gazebo GUI screenshot, because no GUI is running.
 
-## Verified runs, 5 October 2026
+## Historical Waffle Pi runs, 5 October 2026
 
 - Open track: `run-20261005-215851-open_track`, all four ordered landmarks and finish
   passed. 79.4 wall seconds / 94.7 simulation seconds; measured average RTF 1.19.
@@ -89,6 +91,6 @@ bash scripts/test-ubuntu.sh
 bash scripts/test-scripts.sh
 ```
 
-Actual Linux C++ build/CTest, existing Windows controller tests, shell/Python syntax
-and three scenario-metadata checks pass. Metadata checks are not runtime navigation
+The recorded development snapshot passed Linux C++ build/CTest, Windows controller
+checks, shell/Python syntax and three scenario-metadata tests. Metadata checks are not runtime navigation
 tests; the measured Gazebo runs above are the runtime evidence.
