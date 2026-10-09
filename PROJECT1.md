@@ -1,13 +1,13 @@
 # Setup and operation
 
 ROS 2 Jazzy and Gazebo Harmonic simulation using the `burger_cam` model.
-The controller structure is described in [DESIGN.md](DESIGN.md).
+The controller structure and lecture mapping are described in [DESIGN.md](DESIGN.md).
 Recorded build checks and Burger runs are documented in [TESTING.md](TESTING.md).
 Historical Waffle Pi results are listed separately in [evidence notes](evidence/README.md).
 
 ## Code structure
 
-After the A3 refactor each class has one job (headers in
+Each class has one job (headers in
 `turtlebot3_gazebo/include/turtlebot3_gazebo/`, sources in `turtlebot3_gazebo/src/`):
 
 | Class | File | Job |
@@ -40,7 +40,16 @@ authored mutex or cross-thread publishing hook. A bounded reliable-subscriber
 acknowledgement wait helps delivery, but cannot prove that physical wheels stopped.
 
 The controller follows a wall on its right, turns left when the front is blocked,
-and curves right when it loses the wall. Invalid or stale scans stop motion.
+and curves right when it loses the wall. A partial scan no longer cancels a corner
+turn: a valid blocked front still turns left, and a missing right wall triggers a
+rightward search. A valid right distance still allows distance correction when the
+diagonal is missing. Forward motion during partial-scan recovery is capped at
+0.01 m/s and the configured forward speed. If the front reading is unusable, the
+robot rotates without advancing, continuing a previously blocked-front left turn
+or otherwise searching right. There is no recovery timer or attempt limit.
+The original rules and range filtering are unchanged for fully usable scans.
+Missing scans, stale data, invalid timestamps and invalid settings still stop
+motion. Partial-scan recovery needs physical testing before the demonstration.
 It receives no waypoints or maze geometry. The maze assumes a wall beside the start
 and has no floating rooms. The drive controller does not detect the exit: the separate
 validation harness observes Gazebo's model position, pauses the world at the exit and
@@ -107,7 +116,7 @@ SIGINT/SIGTERM. To rerun the installed build's tests, use `bash scripts/test-ubu
 Run non-ROS script/metadata checks with `bash scripts/test-scripts.sh`.
 A Windows test alone is not a ROS build.
 
-## Launch the A1 simulation
+## Launch the simulation
 
 In an Ubuntu terminal:
 

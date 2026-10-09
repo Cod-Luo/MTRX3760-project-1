@@ -60,6 +60,15 @@ void CWallFollowerTests::Feed(CScanReader& aReader, const std::vector<float>& aR
         MinimumRange, MaximumRange);
 }
 
+// Replace an inclusive sector with unusable measurements for recovery tests.
+void CWallFollowerTests::InvalidateSector(std::vector<float>& aRanges, int aFirst, int aLast)
+{
+    for (int Index = aFirst; Index <= aLast; ++Index)
+    {
+        aRanges[static_cast<std::size_t>(Index)] = std::numeric_limits<float>::quiet_NaN();
+    }
+}
+
 bool CWallFollowerTests::CheckSteering() const
 {
     bool Result = true;
@@ -98,9 +107,13 @@ bool CWallFollowerTests::CheckScanValidation() const
     CWallFollower Follower(CWallFollower::Settings{});
     CScanReader Reader;
     Feed(Reader, std::vector<float>(LaserSamples, std::numeric_limits<float>::quiet_NaN()));
-    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "NaN scan should stop") && Result;
+    auto Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "Fresh NaN scan should search right without advancing") && Result;
     Feed(Reader, std::vector<float>(LaserSamples, -std::numeric_limits<float>::infinity()));
-    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Negative infinity should stop") && Result;
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "An unusable negative-infinity scan should rotate to search") && Result;
     Feed(Reader, std::vector<float>(LaserSamples, std::numeric_limits<float>::infinity()));
     Result = Require(Follower.CalculateCommand(Reader, 0.0).Angular < 0.0, "Positive infinity should mean clear space") && Result;
     Feed(Reader, Scan(0.35, 3.5, 720));
@@ -110,7 +123,9 @@ bool CWallFollowerTests::CheckScanValidation() const
     Reader.Update(Wrapped, 0.0, 2.0 * Pi / LaserSamples, MinimumRange, MaximumRange);
     Result = Require(Follower.CalculateCommand(Reader, 0.0).Angular > 0.0, "0-to-2pi angle wrapping failed") && Result;
     Reader.Update(Wrapped, 0.0, 0.0, MinimumRange, MaximumRange);
-    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Invalid scan metadata should stop") && Result;
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "Fresh invalid metadata should rotate without advancing") && Result;
     if (Result)
     {
         std::cout << "PASS: range validation, metadata, resolutions and angle wrapping\n";
@@ -156,6 +171,147 @@ bool CWallFollowerTests::CheckInputStatus() const
     if (Result)
     {
         std::cout << "PASS: validation status, timeout boundary and invalid scan ages\n";
+    }
+    return Result;
+}
+
+bool CWallFollowerTests::CheckPersistentRecovery() const
+{
+    bool Result = true;
+    CWallFollower Follower(CWallFollower::Settings{});
+    CScanReader Reader;
+    auto Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular == 0.0,
+        "Recovery must not start before receiving a scan") && Result;
+
+    const std::vector<float> Invalid(LaserSamples, std::numeric_limits<float>::quiet_NaN());
+    for (int Step = 0; Step < 300; ++Step)
+    {
+        Feed(Reader, Invalid);
+        Command = Follower.CalculateCommand(Reader, 0.0);
+        Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+            "Repeated fresh invalid scans must keep searching without a recovery time limit") && Result;
+    }
+
+    const std::vector<double> StopAges = {
+        0.51, -0.01, std::numeric_limits<double>::quiet_NaN(),
+        std::numeric_limits<double>::infinity()
+    };
+    for (const auto Age : StopAges)
+    {
+        Command = Follower.CalculateCommand(Reader, Age);
+        Result = Require(Command.Linear == 0.0 && Command.Angular == 0.0,
+            "Unusable scans must not bypass stale or invalid-time stops") && Result;
+    }
+
+    Reader.Update({}, 0.0, 0.0, MinimumRange, MaximumRange);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "An empty received scan must search without advancing") && Result;
+    if (Result)
+    {
+        std::cout << "PASS: persistent scan recovery and input-time stops\n";
+    }
+    return Result;
+}
+
+bool CWallFollowerTests::CheckMissingDiagonalRecovery() const
+{
+    bool Result = true;
+    CWallFollower Follower(CWallFollower::Settings{});
+    CScanReader Reader;
+    auto Partial = Scan(0.35);
+    InvalidateSector(Partial, 128, 142);
+    Feed(Reader, Partial);
+    auto Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.01 && std::abs(Command.Angular) < 0.03,
+        "A missing diagonal should still use the valid right-wall distance") && Result;
+
+    Partial = Scan(0.20);
+    InvalidateSector(Partial, 128, 142);
+    Feed(Reader, Partial);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.01 && Command.Angular > 0.0,
+        "A missing diagonal must not discard right-wall distance corrections") && Result;
+
+    Partial = Scan(3.5);
+    InvalidateSector(Partial, 128, 142);
+    Feed(Reader, Partial);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.01 && Command.Angular < 0.0,
+        "Losing the wall with an invalid diagonal must still turn right") && Result;
+    if (Result)
+    {
+        std::cout << "PASS: right-wall corrections with an invalid diagonal\n";
+    }
+    return Result;
+}
+
+bool CWallFollowerTests::CheckPartialScanCornerRecovery() const
+{
+    bool Result = true;
+    CWallFollower Follower(CWallFollower::Settings{});
+    CScanReader Reader;
+    const std::vector<float> Invalid(LaserSamples, std::numeric_limits<float>::quiet_NaN());
+    auto Partial = Scan(0.35, 0.25);
+    InvalidateSector(Partial, 80, 100);
+    Feed(Reader, Partial);
+    auto Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Reader.HasValidFrontReading() && !Reader.HasValidRightReading()
+        && Command.Linear == 0.0 && Command.Angular > 0.0,
+        "At a T-junction, a missing right sector must not cancel a blocked-front turn") && Result;
+
+    Feed(Reader, Invalid);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular > 0.0,
+        "An unknown front must preserve a previously blocked-front turn") && Result;
+
+    Partial = Scan(0.35, 0.45);
+    InvalidateSector(Partial, 80, 100);
+    Feed(Reader, Partial);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular > 0.0,
+        "Partial scans must preserve blocked-front hysteresis") && Result;
+
+    Partial = Scan(0.35, 0.60);
+    InvalidateSector(Partial, 80, 100);
+    Feed(Reader, Partial);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.01 && Command.Angular < 0.0,
+        "Once the front clears, a missing right wall must trigger a rightward search") && Result;
+
+    Feed(Reader, Invalid);
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.0 && Command.Angular < 0.0,
+        "With no blocked-front state, an unknown front must search without advancing") && Result;
+
+    Feed(Reader, Scan(0.35));
+    Command = Follower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear > 0.01 && std::abs(Command.Angular) < 0.03,
+        "A valid scan must restore normal wall following immediately") && Result;
+    if (Result)
+    {
+        std::cout << "PASS: partial-scan corner turns and return to normal control\n";
+    }
+    return Result;
+}
+
+bool CWallFollowerTests::CheckRecoverySpeedLimit() const
+{
+    bool Result = true;
+    CWallFollower::Settings SlowSettings;
+    SlowSettings.ForwardSpeed = 0.005;
+    CWallFollower SlowFollower(SlowSettings);
+    CScanReader Reader;
+    auto Partial = Scan(0.35, 0.60);
+    InvalidateSector(Partial, 80, 100);
+    Feed(Reader, Partial);
+    const auto Command = SlowFollower.CalculateCommand(Reader, 0.0);
+    Result = Require(Command.Linear == 0.005,
+        "Recovery must not exceed a lower configured forward speed") && Result;
+    if (Result)
+    {
+        std::cout << "PASS: recovery respects a lower configured forward speed\n";
     }
     return Result;
 }
@@ -223,8 +379,13 @@ bool CWallFollowerTests::CheckMaze(const SensorProfile& aProfile) const
             std::vector<float> Ranges(LaserSamples, static_cast<float>(MaximumRange));
             const double SensorX = X + aProfile.OffsetX * std::cos(Heading);
             const double SensorY = Y + aProfile.OffsetX * std::sin(Heading);
-            const double AngleMin = aProfile.Noisy ? 0.0 : -Pi;
-            const double AngleIncrement = aProfile.Noisy ? 6.28 / (LaserSamples - 1) : 2.0 * Pi / LaserSamples;
+            double AngleMin = -Pi;
+            double AngleIncrement = 2.0 * Pi / LaserSamples;
+            if (aProfile.Noisy)
+            {
+                AngleMin = 0.0;
+                AngleIncrement = 6.28 / (LaserSamples - 1);
+            }
 
             for (int Index = 0; Index < LaserSamples; ++Index)
             {
@@ -293,6 +454,10 @@ int CWallFollowerTests::Run() const
     bool Passed = CheckSteering();
     Passed = CheckScanValidation() && Passed;
     Passed = CheckInputStatus() && Passed;
+    Passed = CheckPersistentRecovery() && Passed;
+    Passed = CheckMissingDiagonalRecovery() && Passed;
+    Passed = CheckPartialScanCornerRecovery() && Passed;
+    Passed = CheckRecoverySpeedLimit() && Passed;
     for (const auto& Profile : Profiles)
     {
         Passed = CheckMaze(Profile) && Passed;

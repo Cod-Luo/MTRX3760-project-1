@@ -53,6 +53,9 @@ class CWallFollowerNode : public rclcpp::Node
         // Reports input problems and recovery once per change, not every update.
         void ReportInputStatus(CWallFollower::DriveStatus aStatus);
 
+        // Describes one sector in the input diagnostic message.
+        static const char* ReadingStatus(bool aValid);
+
         CScanReader mScanReader;      // Turns laser scans into wall distances.
         CWallFollower mWallFollower;  // Turns wall distances into drive commands.
 

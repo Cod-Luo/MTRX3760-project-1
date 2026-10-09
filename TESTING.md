@@ -1,5 +1,35 @@
 # Additional Gazebo tests
 
+## Partial-scan recovery and course-style cleanup, 9 October 2026
+
+The recovery helper uses one return and ordinary conditionals. Diagnostic text is
+unchanged, and independent recovery cases are split into small test methods. The
+ROS context, executor and final-stop acknowledgement integration is retained.
+
+The following checks passed on macOS with Apple Clang:
+
+```bash
+bash scripts/test-core.sh -O2 -DNDEBUG
+bash scripts/test-scripts.sh
+python3 -m py_compile tests/ros_node_test.py
+git diff --check
+```
+
+The core build uses C++17 with `-Wall -Wextra -Wpedantic -Werror`. All seven focused
+groups and three idealised maze profiles passed. Recovery checks cover persistent
+invalid input, stale/invalid-time stops, missing diagonal readings, retained
+blocked-front turns, return to normal control and a lower configured speed cap.
+Three scenario-metadata and four workspace checks also passed. The core was
+additionally compiled and checked with C++14 during review.
+
+These checks do not compile the ROS adapter or run the ROS synthetic-scan tests.
+ROS/Gazebo and physical-robot tests were not rerun for this cleanup. The recorded
+Gazebo results below predate partial-scan recovery; they are historical evidence,
+not validation of the new recovery behavior. Use `scripts/build-ubuntu.sh` and
+the scenario commands below to validate the current version with ROS installed.
+
+## Running Gazebo checks
+
 Build from this checkout's root before running the commands below.
 Close any existing project Gazebo launch before starting one of these commands.
 

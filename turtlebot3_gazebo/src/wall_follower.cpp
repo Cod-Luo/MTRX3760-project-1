@@ -2,11 +2,13 @@
 
 #include "turtlebot3_gazebo/wall_follower.hpp"
 
+#include <algorithm>
 #include <cmath>
 
 const double CWallFollower::ScanTimeout = 0.5;
 const double CWallFollower::CornerTurnFraction = 0.5;
 const double CWallFollower::MaxSteeringSlowdown = 0.5;
+const double CWallFollower::InvalidScanSpeed = 0.01;
 
 bool CWallFollower::Settings::IsValid() const
 {
@@ -44,9 +46,10 @@ CWallFollower::Command CWallFollower::CalculateCommand(
     const CScanReader& aScan,
     double aScanAgeSeconds)
 {
-    Command Result;  // Stop unless it is safe to drive.
+    Command Result;  // Missing input, stale data or invalid settings still stop.
+    const DriveStatus Status = CheckInput(aScan, aScanAgeSeconds);
 
-    if (CheckInput(aScan, aScanAgeSeconds) == Ready)
+    if (Status == Ready)
     {
         UpdateFrontBlocked(aScan.FrontDistance());
 
@@ -63,7 +66,54 @@ CWallFollower::Command CWallFollower::CalculateCommand(
             Result = FollowWall(aScan.RightDistance(), aScan.FrontRightDistance());
         }
     }
+    else if (Status == InvalidScan && aScan.HasReceivedScan())
+    {
+        Result = RecoverFromPartialScan(aScan);
+    }
 
+    return Result;
+}
+
+CWallFollower::Command CWallFollower::RecoverFromPartialScan(const CScanReader& aScan)
+{
+    Command Result;
+
+    if (aScan.HasValidFrontReading())
+    {
+        UpdateFrontBlocked(aScan.FrontDistance());
+    }
+
+    // Missing side readings must not cancel a known blocked-front turn.
+    if (mFrontBlocked)
+    {
+        Result = TurnLeftInPlace();
+    }
+    else
+    {
+        Result.Angular = -mSettings.TurnSpeed * CornerTurnFraction;
+
+        // If the front is unknown, rotate to obtain a different view without advancing.
+        if (aScan.HasValidFrontReading())
+        {
+            Result.Linear = std::min(InvalidScanSpeed, mSettings.ForwardSpeed);
+
+            if (aScan.HasValidRightReading()
+                && aScan.RightDistance() <= mSettings.WallLostDistance)
+            {
+                // Without a diagonal return, use distance control without a heading estimate.
+                double Diagonal = mSettings.WallLostDistance;
+                if (aScan.HasValidFrontRightReading())
+                {
+                    Diagonal = aScan.FrontRightDistance();
+                }
+
+                Result = FollowWall(aScan.RightDistance(), Diagonal);
+                Result.Linear = std::min(Result.Linear, InvalidScanSpeed);
+            }
+        }
+    }
+
+    // No recovery timer: the next usable scan immediately restores normal control.
     return Result;
 }
 
@@ -75,10 +125,6 @@ CWallFollower::DriveStatus CWallFollower::CheckInput(
     {
         Result = InvalidSettings;
     }
-    else if (!aScan.HasValidReadings())
-    {
-        Result = InvalidScan;
-    }
     else if (!std::isfinite(aScanAgeSeconds) || aScanAgeSeconds < 0.0)
     {
         Result = InvalidScanTime;
@@ -86,6 +132,10 @@ CWallFollower::DriveStatus CWallFollower::CheckInput(
     else if (aScanAgeSeconds > ScanTimeout)
     {
         Result = StaleScan;
+    }
+    else if (!aScan.HasValidReadings())
+    {
+        Result = InvalidScan;
     }
     return Result;
 }
