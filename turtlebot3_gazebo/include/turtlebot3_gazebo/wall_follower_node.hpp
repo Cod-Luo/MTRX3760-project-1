@@ -20,11 +20,10 @@
 #define TURTLEBOT3_GAZEBO_WALL_FOLLOWER_NODE_HPP
 
 #include "turtlebot3_gazebo/path_recorder.hpp"
+#include "turtlebot3_gazebo/velocity_publisher.hpp"
 #include "turtlebot3_gazebo/wall_follower.hpp"
 
 #include <chrono>
-#include <geometry_msgs/msg/twist.hpp>
-#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 
@@ -45,13 +44,10 @@ class CWallFollowerNode : public rclcpp::Node
         // Calculates and publishes commands using the latest usable scan.
         void Update();
 
-        // Publishes the velocity message type selected at startup.
-        void PublishCommand(const CWallFollower::Command& aCommand);
-
         CWallFollower mWallFollower;
 
-        // Must match the receiver's cmd_vel message type.
-        bool mUseStampedVelocity;
+        // Sends the controller's commands to the wheels.
+        CVelocityPublisher mVelocityPublisher;
 
         // Prevents movement before the first scan arrives.
         bool mHaveScan = false;
@@ -59,12 +55,6 @@ class CWallFollowerNode : public rclcpp::Node
         // Receipt time uses a steady clock; measurement time uses the ROS clock.
         std::chrono::steady_clock::time_point mLastScan;
         rclcpp::Time mLastScanStamp;
-
-        rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr
-            mVelocityPublisher;
-
-        rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr
-            mStampedPublisher;
 
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr
             mScanSubscriber;

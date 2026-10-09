@@ -27,7 +27,8 @@
 CWallFollowerNode::CWallFollowerNode()
     : Node("turtlebot3_drive_node"),
       mWallFollower(ReadSettings()),
-      mUseStampedVelocity(
+      mVelocityPublisher(
+          *this,
           declare_parameter<bool>("use_stamped_velocity", true)),
       mLastScan(std::chrono::steady_clock::now()),
       mLastScanStamp(0, 0, get_clock()->get_clock_type()),
@@ -38,20 +39,6 @@ CWallFollowerNode::CWallFollowerNode()
         RCLCPP_ERROR(
             get_logger(),
             "Invalid wall-follower settings; motion disabled");
-    }
-
-    // Create only the velocity publisher selected for this robot setup.
-    if (mUseStampedVelocity)
-    {
-        mStampedPublisher =
-            create_publisher<geometry_msgs::msg::TwistStamped>(
-                "cmd_vel", 10);
-    }
-    else
-    {
-        mVelocityPublisher =
-            create_publisher<geometry_msgs::msg::Twist>(
-                "cmd_vel", 10);
     }
 
     mScanSubscriber = create_subscription<sensor_msgs::msg::LaserScan>(
@@ -126,29 +113,6 @@ void CWallFollowerNode::ScanCallback(
     mHaveScan = true;
 }
 
-// Convert the controller's command into the selected ROS velocity message.
-void CWallFollowerNode::PublishCommand(
-    const CWallFollower::Command& aCommand)
-{
-    geometry_msgs::msg::Twist Velocity;
-    Velocity.linear.x = aCommand.Linear;
-    Velocity.angular.z = aCommand.Angular;
-
-    if (mUseStampedVelocity)
-    {
-        geometry_msgs::msg::TwistStamped Stamped;
-        Stamped.header.stamp = now();
-        Stamped.header.frame_id = "base_link";
-        Stamped.twist = Velocity;
-
-        mStampedPublisher->publish(Stamped);
-    }
-    else
-    {
-        mVelocityPublisher->publish(Velocity);
-    }
-}
-
 // Publish a stop unless a received scan is recent enough for the controller.
 void CWallFollowerNode::Update()
 {
@@ -168,5 +132,5 @@ void CWallFollowerNode::Update()
         }
     }
 
-    PublishCommand(Command);
+    mVelocityPublisher.Publish(Command.Linear, Command.Angular);
 }
