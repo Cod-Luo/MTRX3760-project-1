@@ -51,9 +51,9 @@ and has no floating rooms. The drive controller does not detect the exit: the se
 validation harness observes Gazebo's model position, pauses the world at the exit and
 stops its own drive process. Ground truth and maze coordinates are never sent to the controller.
 
-The supplied Jazzy bridge uses `TwistStamped`; the controller matches it by default.
-The parameter `use_stamped_velocity:=false` selects `Twist` if a later platform needs it.
-Physical robot operation still requires checking its topic types, tuning and live tests.
+The supplied Jazzy bridge and physical robot use `TwistStamped`; the controller
+always publishes this message type on `cmd_vel`.
+Physical robot operation still requires tuning and live tests.
 
 ## Run development tests now (PowerShell)
 

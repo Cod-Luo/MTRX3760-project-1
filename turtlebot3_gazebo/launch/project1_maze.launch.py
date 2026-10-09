@@ -62,7 +62,7 @@ def launch_scenario(context):
         launch_arguments=spawn_arguments.items())
     drive = Node(
         package='turtlebot3_gazebo', executable='turtlebot3_drive', output='screen',
-        parameters=[{'use_sim_time': True, 'use_stamped_velocity': True}],
+        parameters=[{'use_sim_time': True}],
         condition=IfCondition(controller))
     display = Node(
         package='rviz2', executable='rviz2', output='screen',

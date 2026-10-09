@@ -22,7 +22,6 @@
 #include "turtlebot3_gazebo/wall_follower.hpp"
 
 #include <chrono>
-#include <geometry_msgs/msg/twist.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 #include <nav_msgs/msg/path.hpp>
@@ -50,13 +49,10 @@ class Turtlebot3Drive : public rclcpp::Node
         // Calculates and publishes commands using the latest usable scan.
         void Update();
 
-        // Publishes the velocity message type selected at startup.
+        // Publishes a timestamped velocity command.
         void PublishCommand(const WallFollower::Command& aCommand);
 
         WallFollower mWallFollower;
-
-        // Must match the receiver's cmd_vel message type.
-        bool mUseStampedVelocity;
 
         // Prevents movement before the first scan arrives.
         bool mHaveScan = false;
@@ -64,9 +60,6 @@ class Turtlebot3Drive : public rclcpp::Node
         // Receipt time uses a steady clock; measurement time uses the ROS clock.
         std::chrono::steady_clock::time_point mLastScan;
         rclcpp::Time mLastScanStamp;
-
-        rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr
-            mVelocityPublisher;
 
         rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr
             mStampedPublisher;

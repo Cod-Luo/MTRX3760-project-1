@@ -28,8 +28,6 @@
 Turtlebot3Drive::Turtlebot3Drive()
     : Node("turtlebot3_drive_node"),
       mWallFollower(ReadSettings()),
-      mUseStampedVelocity(
-          declare_parameter<bool>("use_stamped_velocity", true)),
       mLastScan(std::chrono::steady_clock::now()),
       mLastScanStamp(0, 0, get_clock()->get_clock_type()),
       mLastPathSample(0, 0, get_clock()->get_clock_type())
@@ -41,19 +39,9 @@ Turtlebot3Drive::Turtlebot3Drive()
             "Invalid wall-follower settings; motion disabled");
     }
 
-    // Create only the velocity publisher selected for this robot setup.
-    if (mUseStampedVelocity)
-    {
-        mStampedPublisher =
-            create_publisher<geometry_msgs::msg::TwistStamped>(
-                "cmd_vel", 10);
-    }
-    else
-    {
-        mVelocityPublisher =
-            create_publisher<geometry_msgs::msg::Twist>(
-                "cmd_vel", 10);
-    }
+    // The simulator and physical robot receive timestamped velocity commands.
+    mStampedPublisher =
+        create_publisher<geometry_msgs::msg::TwistStamped>("cmd_vel", 10);
 
     // Each message contains the complete path, so retain the latest message.
     mPathPublisher = create_publisher<nav_msgs::msg::Path>(
@@ -171,27 +159,17 @@ void Turtlebot3Drive::OdometryCallback(
     }
 }
 
-// Convert the controller's command into the selected ROS velocity message.
+// Convert the controller's command into a timestamped ROS velocity message.
 void Turtlebot3Drive::PublishCommand(
     const WallFollower::Command& aCommand)
 {
-    geometry_msgs::msg::Twist Velocity;
-    Velocity.linear.x = aCommand.Linear;
-    Velocity.angular.z = aCommand.Angular;
+    geometry_msgs::msg::TwistStamped Stamped;
+    Stamped.header.stamp = now();
+    Stamped.header.frame_id = "base_link";
+    Stamped.twist.linear.x = aCommand.Linear;
+    Stamped.twist.angular.z = aCommand.Angular;
 
-    if (mUseStampedVelocity)
-    {
-        geometry_msgs::msg::TwistStamped Stamped;
-        Stamped.header.stamp = now();
-        Stamped.header.frame_id = "base_link";
-        Stamped.twist = Velocity;
-
-        mStampedPublisher->publish(Stamped);
-    }
-    else
-    {
-        mVelocityPublisher->publish(Velocity);
-    }
+    mStampedPublisher->publish(Stamped);
 }
 
 // Publish a stop unless a received scan is recent enough for the controller.
