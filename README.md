@@ -32,6 +32,38 @@ Run scenarios sequentially. Use `view 1` instead of `fast 2` for full-camera
 Gazebo/RViz operation. See the setup guide for workspace and model selection.
 Simulation evidence is separate from physical testing and the live demonstration.
 
+## Physical robot command-line setup
+
+Run the following commands on the TurtleBot's computer to start the physical
+robot. Use the same ROS domain as the laptop.
+
+On the robot:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+export ROS_DOMAIN_ID=100
+export TURTLEBOT3_MODEL=burger
+
+ros2 launch turtlebot3_bringup robot.launch.py
+```
+
+On the laptop, from the project workspace:
+
+```bash
+source /opt/ros/jazzy/setup.bash
+source ~/project1_ws/install/setup.bash
+export ROS_DOMAIN_ID=100
+unset ROS_LOCALHOST_ONLY
+export ROS_AUTOMATIC_DISCOVERY_RANGE=SUBNET
+
+ros2 run turtlebot3_gazebo turtlebot3_drive --ros-args \
+  -p use_sim_time:=false \
+  -p wall_distance:=0.25 \
+  -p forward_speed:=0.10 \
+  -p front_stop_distance:=0.25 \
+  -p front_resume_distance:=0.35
+```
+
 For controller-only checks on Linux or macOS, without ROS installed:
 
 ```bash
