@@ -60,9 +60,17 @@ CWallFollowerNode::CWallFollowerNode()
         rclcpp::Duration::from_seconds(UpdatePeriodSeconds),
         std::bind(&CWallFollowerNode::Update, this));
 
+    mStopHook = get_node_base_interface()->get_context()->add_pre_shutdown_callback(
+        std::bind(&CWallFollowerNode::StopBeforeShutdown, this));
+
     RCLCPP_INFO(
         get_logger(),
         "Right-wall follower ready; waiting for laser data");
+}
+
+CWallFollowerNode::~CWallFollowerNode()
+{
+    get_node_base_interface()->get_context()->remove_pre_shutdown_callback(mStopHook);
 }
 
 // Read parameters once when constructing the controller.
@@ -137,5 +145,21 @@ void CWallFollowerNode::Update()
         }
     }
 
-    mVelocityPublisher.Publish(Command.Linear, Command.Angular);
+    std::lock_guard<std::mutex> Lock(mPublishMutex);
+
+    if (!mStopped)
+    {
+        mVelocityPublisher.Publish(Command.Linear, Command.Angular);
+    }
+}
+
+// Send a final stop while ROS can still deliver it, then block further commands.
+void CWallFollowerNode::StopBeforeShutdown()
+{
+    std::lock_guard<std::mutex> Lock(mPublishMutex);
+
+    mStopped = true;
+    mVelocityPublisher.Publish(0.0, 0.0);
+
+    RCLCPP_INFO(get_logger(), "Shutting down: stop command sent");
 }

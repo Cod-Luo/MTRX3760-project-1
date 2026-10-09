@@ -25,6 +25,7 @@
 #include "turtlebot3_gazebo/wall_follower.hpp"
 
 #include <chrono>
+#include <mutex>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
 
@@ -36,6 +37,9 @@ class CWallFollowerNode : public rclcpp::Node
     public:
         CWallFollowerNode();
 
+        // Removes the shutdown hook so it cannot run after this node is gone.
+        ~CWallFollowerNode();
+
     private:
         // Reads startup parameters; settings are fixed for this node instance.
         CWallFollower::Settings ReadSettings();
@@ -46,6 +50,11 @@ class CWallFollowerNode : public rclcpp::Node
 
         // Calculates and publishes commands using the latest usable scan.
         void Update();
+
+        // Runs just before ROS shuts down (e.g. Ctrl+C) and sends one last stop.
+        // Gazebo, and possibly the real robot, keep repeating the last command,
+        // so without this the robot could keep driving after the program exits.
+        void StopBeforeShutdown();
 
         CScanReader mScanReader;      // Turns laser scans into wall distances.
         CWallFollower mWallFollower;  // Turns wall distances into drive commands.
@@ -67,6 +76,12 @@ class CWallFollowerNode : public rclcpp::Node
 
         // Draws the driven route in RViz; independent of control.
         CPathRecorder mPathRecorder;
+
+        // The shutdown hook runs on a different thread from Update(), so this
+        // lock makes sure no drive command can be sent after the final stop.
+        std::mutex mPublishMutex;
+        bool mStopped = false;  // Guarded by mPublishMutex.
+        rclcpp::PreShutdownCallbackHandle mStopHook;
 
         static const std::string NodeName;
         static const std::string ScanTopic;
