@@ -54,7 +54,9 @@ def launch_scenario(context):
         temporary = tempfile.TemporaryDirectory(prefix='mtrx3760-camera-')
         atexit.register(temporary.cleanup)
         robot = ET.parse(os.path.join(package, 'models', 'turtlebot3_' + model, 'model.sdf'))
-        for sensor in robot.findall('.//sensor[@type="camera"]'):
+        # BurgerCam's Pi camera is a wideanglecamera, so handle both camera types.
+        cameras = robot.findall('.//sensor[@type="camera"]') + robot.findall('.//sensor[@type="wideanglecamera"]')
+        for sensor in cameras:
             sensor.find('update_rate').text = '10'
             sensor.find('camera/image/width').text = '320'
             sensor.find('camera/image/height').text = '240'
