@@ -20,16 +20,16 @@
 
 #include <algorithm>
 #include <functional>
-#include <memory>
 #include <rclcpp/create_timer.hpp>
 
 const std::string CWallFollowerNode::NodeName = "turtlebot3_drive_node";
 const std::string CWallFollowerNode::ScanTopic = "scan";
 const double CWallFollowerNode::UpdatePeriodSeconds = 0.05;  // 20 Hz.
+const double CWallFollowerNode::PollFrequency = 100.0;
 
 // Configure the controller and connect its inputs and outputs to ROS.
-CWallFollowerNode::CWallFollowerNode()
-    : Node(NodeName),
+CWallFollowerNode::CWallFollowerNode(const rclcpp::NodeOptions& aOptions)
+    : Node(NodeName, aOptions),
       mWallFollower(ReadSettings()),
       mVelocityPublisher(*this),
       mLastScanReceipt(std::chrono::steady_clock::now()),
@@ -38,9 +38,7 @@ CWallFollowerNode::CWallFollowerNode()
 {
     if (!mWallFollower.HasValidSettings())
     {
-        RCLCPP_ERROR(
-            get_logger(),
-            "Invalid wall-follower settings; motion disabled");
+        ReportInputStatus(CWallFollower::InvalidSettings);
     }
 
     mScanSubscriber = create_subscription<sensor_msgs::msg::LaserScan>(
@@ -58,17 +56,35 @@ CWallFollowerNode::CWallFollowerNode()
         rclcpp::Duration::from_seconds(UpdatePeriodSeconds),
         std::bind(&CWallFollowerNode::Update, this));
 
-    mStopHook = get_node_base_interface()->get_context()->add_pre_shutdown_callback(
-        std::bind(&CWallFollowerNode::StopBeforeShutdown, this));
-
     RCLCPP_INFO(
         get_logger(),
         "Right-wall follower ready; waiting for laser data");
 }
 
-CWallFollowerNode::~CWallFollowerNode()
+// The default ROS context handles Ctrl+C/SIGTERM. This node has its own context,
+// kept alive by main until this single-threaded loop has sent the final stop.
+void CWallFollowerNode::Run()
 {
-    get_node_base_interface()->get_context()->remove_pre_shutdown_callback(mStopHook);
+    rclcpp::ExecutorOptions Options;
+    Options.context = get_node_base_interface()->get_context();
+    rclcpp::executors::SingleThreadedExecutor Executor(Options);
+    Executor.add_node(get_node_base_interface());
+    rclcpp::WallRate PollRate(PollFrequency);
+
+    while (rclcpp::ok() && rclcpp::ok(Options.context))
+    {
+        Executor.spin_some();
+        PollRate.sleep();
+    }
+
+    // No callbacks execute after this point, so a drive cannot follow this stop.
+    mUpdateTimer->cancel();
+    if (rclcpp::ok(Options.context))
+    {
+        mVelocityPublisher.Stop();
+        RCLCPP_INFO(get_logger(), "Shutting down: stop command sent");
+    }
+    Executor.remove_node(get_node_base_interface());
 }
 
 // Read parameters once when constructing the controller.
@@ -135,29 +151,42 @@ void CWallFollowerNode::Update()
 
         const double StampAge = (now() - mLastScanStamp).seconds();
 
+        double ScanAge = -1.0;
         if (StampAge >= 0.0)
         {
-            Command = mWallFollower.CalculateCommand(
-                mScanReader,
-                std::max(ReceiptAge, StampAge));
+            ScanAge = std::max(ReceiptAge, StampAge);
         }
+        ReportInputStatus(mWallFollower.CheckInput(mScanReader, ScanAge));
+        Command = mWallFollower.CalculateCommand(mScanReader, ScanAge);
     }
 
-    std::lock_guard<std::mutex> Lock(mPublishMutex);
-
-    if (!mStopped)
-    {
-        mVelocityPublisher.Publish(Command.Linear, Command.Angular);
-    }
+    mVelocityPublisher.Publish(Command.Linear, Command.Angular);
 }
 
-// Send a final stop while ROS can still deliver it, then block further commands.
-void CWallFollowerNode::StopBeforeShutdown()
+// Keep safety checks enabled in release builds and make each failure diagnosable.
+void CWallFollowerNode::ReportInputStatus(CWallFollower::DriveStatus aStatus)
 {
-    std::lock_guard<std::mutex> Lock(mPublishMutex);
-
-    mStopped = true;
-    mVelocityPublisher.Publish(0.0, 0.0);
-
-    RCLCPP_INFO(get_logger(), "Shutting down: stop command sent");
+    if (!mHaveInputStatus || aStatus != mInputStatus)
+    {
+        switch (aStatus)
+        {
+            case CWallFollower::Ready:
+                RCLCPP_INFO(get_logger(), "Usable laser data received; motion enabled");
+                break;
+            case CWallFollower::InvalidSettings:
+                RCLCPP_ERROR(get_logger(), "Invalid wall-follower settings; motion disabled");
+                break;
+            case CWallFollower::InvalidScan:
+                RCLCPP_WARN(get_logger(), "Invalid laser readings or metadata; stopping");
+                break;
+            case CWallFollower::InvalidScanTime:
+                RCLCPP_WARN(get_logger(), "Invalid laser timestamp or scan age; stopping");
+                break;
+            case CWallFollower::StaleScan:
+                RCLCPP_WARN(get_logger(), "Laser data is stale; stopping");
+                break;
+        }
+        mInputStatus = aStatus;
+        mHaveInputStatus = true;
+    }
 }

@@ -1,0 +1,34 @@
+{
+  "scenario": "open_track",
+  "world": "project1_open_track",
+  "elapsed_seconds": 102.7881745599999,
+  "simulation_seconds": 91.232,
+  "requested_real_time_factor": 2.0,
+  "ordered_checkpoints_reached": [
+    "starting_wall",
+    "first_outside_corner",
+    "east_end",
+    "return_wall"
+  ],
+  "laser_messages": 447,
+  "camera_messages": 894,
+  "camera_dimensions": [
+    320,
+    240
+  ],
+  "recorded_path_poses": 434,
+  "final_world_pose": [
+    -1.8043880479306436,
+    -1.9411225204840552
+  ],
+  "odometry_inferred_final_pose": [
+    -1.6472936933256166,
+    -4.284522389515092
+  ],
+  "ground_truth_messages": 3720,
+  "ground_truth_error": null,
+  "maze_exit_reached": true,
+  "note": "Exit and ground-truth.csv use Gazebo model poses. trajectory.csv and the RViz path use drifting wheel odometry. The controller receives neither ground truth nor maze coordinates.",
+  "runtime_checks_passed": true,
+  "measured_average_real_time_factor": 0.8875729177070434
+}

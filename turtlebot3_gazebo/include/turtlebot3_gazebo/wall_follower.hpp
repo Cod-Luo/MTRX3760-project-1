@@ -15,6 +15,16 @@
 class CWallFollower
 {
     public:
+        // Input validation result, also used by the ROS node's diagnostics.
+        enum DriveStatus
+        {
+            Ready,
+            InvalidSettings,
+            InvalidScan,
+            InvalidScanTime,
+            StaleScan
+        };
+
         // Distances are metres; speeds are metres/second and radians/second.
         struct Settings
         {
@@ -44,13 +54,13 @@ class CWallFollower
         // Reports whether the supplied settings are usable.
         bool HasValidSettings() const;
 
+        // Explains why motion is permitted or disabled; does not change steering state.
+        DriveStatus CheckInput(const CScanReader& aScan, double aScanAgeSeconds) const;
+
         // Returns a stop command for missing, invalid or stale scans.
         Command CalculateCommand(const CScanReader& aScan, double aScanAgeSeconds);
 
     private:
-        // True only for valid settings and a recent scan with readings in every direction.
-        bool CanDrive(const CScanReader& aScan, double aScanAgeSeconds) const;
-
         // Uses separate stop and resume distances so the robot does not flick
         // between turning and driving when the front distance hovers near one value.
         void UpdateFrontBlocked(double aFrontDistance);

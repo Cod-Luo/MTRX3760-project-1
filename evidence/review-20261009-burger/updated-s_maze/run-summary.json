@@ -1,0 +1,33 @@
+{
+  "scenario": "s_maze",
+  "world": "project1_maze",
+  "elapsed_seconds": 169.208547523,
+  "simulation_seconds": 156.001,
+  "requested_real_time_factor": 2.0,
+  "ordered_checkpoints_reached": [
+    "first_corridor_east_end",
+    "middle_corridor_west_end",
+    "upper_corridor"
+  ],
+  "laser_messages": 770,
+  "camera_messages": 1540,
+  "camera_dimensions": [
+    320,
+    240
+  ],
+  "recorded_path_poses": 764,
+  "final_world_pose": [
+    4.003320142552902,
+    2.0081772852955844
+  ],
+  "odometry_inferred_final_pose": [
+    4.292864519394495,
+    2.7266118442392173
+  ],
+  "ground_truth_messages": 6310,
+  "ground_truth_error": null,
+  "maze_exit_reached": true,
+  "note": "Exit and ground-truth.csv use Gazebo model poses. trajectory.csv and the RViz path use drifting wheel odometry. The controller receives neither ground truth nor maze coordinates.",
+  "runtime_checks_passed": true,
+  "measured_average_real_time_factor": 0.9219451516111813
+}

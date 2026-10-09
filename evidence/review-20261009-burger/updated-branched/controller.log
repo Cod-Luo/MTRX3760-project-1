@@ -1,0 +1,4 @@
+[INFO] [1791522821.734140448] [turtlebot3_drive_node]: Right-wall follower ready; waiting for laser data
+[INFO] [1791522824.116295541] [turtlebot3_drive_node]: Usable laser data received; motion enabled
+[INFO] [1791522944.647447080] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1791522944.653247732] [turtlebot3_drive_node]: Shutting down: stop command sent

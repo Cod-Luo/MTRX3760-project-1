@@ -1,0 +1,31 @@
+[INFO] [launch]: All log files can be found below /home/royce/.ros/log/2026-10-09-16-16-08-287455-DESKTOP-RX-502
+[INFO] [launch]: Default logging verbosity is set to INFO
+[INFO] [gazebo-1]: process started with pid [507]
+[INFO] [robot_state_publisher-2]: process started with pid [508]
+[robot_state_publisher-2] [INFO] [1791522968.839749231] [robot_state_publisher]: Robot initialized
+[INFO] [create-3]: process started with pid [534]
+[INFO] [parameter_bridge-4]: process started with pid [535]
+[INFO] [image_bridge-5]: process started with pid [536]
+[create-3] [INFO] [1791522971.828807118] [ros_gz_sim]: Requesting list of world names.
+[create-3] [INFO] [1791522972.031408979] [ros_gz_sim]: Entity creation successful.
+[gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="turtlebot3_burger_cam"]/link[@name="base_scan"]/sensor[@name="hls_lfcd_lds"]/gz_frame_id:/tmp/mtrx3760-camera-vtubfkf8/burger_cam.sdf:L141]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[gazebo-1] [1;33mWarning [Utils.cc:132][0m [/sdf/model[@name="turtlebot3_burger_cam"]/link[@name="camera_link"]/sensor[@name="camera"]/gz_frame_id:/tmp/mtrx3760-camera-vtubfkf8/burger_cam.sdf:L344]: XML Element[gz_frame_id], child of element[sensor], not defined in SDF. Copying[gz_frame_id] as children of [sensor].
+[INFO] [create-3]: process has finished cleanly [pid 534]
+[parameter_bridge-4] [INFO] [1791522972.844936884] [ros_gz_bridge]: Creating GZ->ROS Bridge: [clock (gz.msgs.Clock) -> clock (rosgraph_msgs/msg/Clock)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1791522972.848373427] [ros_gz_bridge]: Creating GZ->ROS Bridge: [joint_states (gz.msgs.Model) -> joint_states (sensor_msgs/msg/JointState)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1791522972.852559083] [ros_gz_bridge]: Creating GZ->ROS Bridge: [odom (gz.msgs.Odometry) -> odom (nav_msgs/msg/Odometry)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1791522972.857157666] [ros_gz_bridge]: Creating GZ->ROS Bridge: [tf (gz.msgs.Pose_V) -> tf (tf2_msgs/msg/TFMessage)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1791522972.860785123] [ros_gz_bridge]: Creating ROS->GZ Bridge: [cmd_vel (geometry_msgs/msg/TwistStamped) -> cmd_vel (gz.msgs.Twist)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1791522972.862089279] [ros_gz_bridge]: Creating GZ->ROS Bridge: [imu (gz.msgs.IMU) -> imu (sensor_msgs/msg/Imu)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1791522972.864115092] [ros_gz_bridge]: Creating GZ->ROS Bridge: [scan (gz.msgs.LaserScan) -> scan (sensor_msgs/msg/LaserScan)] (Lazy 0)
+[parameter_bridge-4] [INFO] [1791522972.865574431] [ros_gz_bridge]: Creating GZ->ROS Bridge: [camera/camera_info (gz.msgs.CameraInfo) -> camera/camera_info (sensor_msgs/msg/CameraInfo)] (Lazy 0)
+[gazebo-1] [1;33m[Wrn] [Ogre2RenderTarget.cc:668] [0m[1;33mAnti-aliasing level of '[0m[1;33m[0m[1;33m' [0m[1;33mis not supported; valid FSAA levels are: [0m[1;33m[ 0 4 ][0m[1;33m. Setting to 1[0m[1;33m[0m
+[parameter_bridge-4] [INFO] [1791522981.513031973] [ros_gz_bridge]: Passing message from ROS geometry_msgs/msg/TwistStamped to Gazebo gz.msgs.Twist (showing msg only once per type)
+[parameter_bridge-4] [INFO] [1791523078.047251126] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[image_bridge-5] [INFO] [1791523078.047324269] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[robot_state_publisher-2] [INFO] [1791523078.047395680] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [parameter_bridge-4]: process has finished cleanly [pid 535]
+[INFO] [robot_state_publisher-2]: process has finished cleanly [pid 508]
+[INFO] [image_bridge-5]: process has finished cleanly [pid 536]
+[INFO] [gazebo-1]: process has finished cleanly [pid 507]
+[INFO] [launch]: process[gazebo-1] was required: shutting down launched system

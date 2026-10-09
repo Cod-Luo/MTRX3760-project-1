@@ -17,11 +17,12 @@ class CPathRecorder
         // Creates the odometry subscription and the path publisher on aNode.
         explicit CPathRecorder(rclcpp::Node& aNode);
 
-        // The subscription callback points at this object, so it must not be copied.
-        CPathRecorder(const CPathRecorder&) = delete;
-        CPathRecorder& operator=(const CPathRecorder&) = delete;
-
     private:
+        // Callbacks retain this address. Private, undefined copy operations prevent
+        // copying without the newer '= delete' syntax; they must never be called.
+        CPathRecorder(const CPathRecorder&);
+        CPathRecorder& operator=(const CPathRecorder&);
+
         // Samples the path at a fixed rate and restarts it after a time or frame reset.
         void OdometryCallback(const nav_msgs::msg::Odometry::SharedPtr aMessage);
 

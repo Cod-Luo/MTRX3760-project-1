@@ -2,9 +2,12 @@
 
 #include "turtlebot3_gazebo/velocity_publisher.hpp"
 
+#include <chrono>
+
 const std::string CVelocityPublisher::Topic = "cmd_vel";
 const std::string CVelocityPublisher::FrameId = "base_link";
 const int CVelocityPublisher::QueueDepth = 10;
+const int CVelocityPublisher::StopWaitMilliseconds = 500;
 
 // Create the timestamped velocity publisher used by the simulator and robot.
 CVelocityPublisher::CVelocityPublisher(rclcpp::Node& aNode)
@@ -25,4 +28,15 @@ void CVelocityPublisher::Publish(double aLinear, double aAngular)
     Stamped.twist.angular.z = aAngular;
 
     mStampedPublisher->publish(Stamped);
+}
+
+// Acknowledgement is a delivery check, not proof that the physical wheels stopped.
+void CVelocityPublisher::Stop()
+{
+    Publish(0.0, 0.0);
+    if (!mStampedPublisher->wait_for_all_acked(
+        std::chrono::milliseconds(StopWaitMilliseconds)))
+    {
+        RCLCPP_WARN(mNode.get_logger(), "Timed out waiting for stop acknowledgement");
+    }
 }

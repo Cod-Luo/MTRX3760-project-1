@@ -1,0 +1,51 @@
+{
+  "label": "Original S-maze",
+  "world": "project1_maze",
+  "spawn": [
+    -2.4,
+    -2.55,
+    0.0
+  ],
+  "exit": [
+    4.0,
+    5.0,
+    1.65,
+    2.55
+  ],
+  "plot_bounds": [
+    -3.5,
+    5.0,
+    -3.5,
+    3.5
+  ],
+  "checkpoints": [
+    {
+      "name": "first_corridor_east_end",
+      "bounds": [
+        2.1,
+        2.9,
+        -2.9,
+        -1.5
+      ]
+    },
+    {
+      "name": "middle_corridor_west_end",
+      "bounds": [
+        -2.9,
+        -2.1,
+        -0.9,
+        0.9
+      ]
+    },
+    {
+      "name": "upper_corridor",
+      "bounds": [
+        -2.9,
+        -0.1,
+        1.2,
+        2.9
+      ]
+    }
+  ],
+  "name": "s_maze"
+}

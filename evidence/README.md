@@ -3,6 +3,15 @@
 These are genuine saved development runs, not physical-robot results. New runs
 remain ignored by Git until deliberately selected for a later snapshot.
 
+All dated October 5 runs listed here used the earlier Waffle Pi configuration, not
+the current `A3-refactor` Burger camera default. Preserve them as historical evidence;
+do not relabel them as current Burger results. Current verification is documented in
+`../COURSE_ALIGNMENT.md` and new runs require their own saved evidence.
+
+`review-20261009-burger/` contains fresh Burger camera runs for the course-alignment
+changes, separately from the historical Waffle snapshots. Its README records the
+configuration and the minor startup-logging correction made after its S-maze run.
+
 | Run | Purpose and interpretation |
 | --- | --- |
 | `run-20261005-210427` | Early S-maze development run. Its exit check used drifting odometry; do not use this as the accurate route figure. |

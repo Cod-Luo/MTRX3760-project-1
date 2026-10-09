@@ -1,6 +1,6 @@
 // wall_follower_test.cpp - Steering checks and a closed-loop ray-cast maze test.
 // This idealised model is a development test, not Gazebo/A1 evidence.
-#include "turtlebot3_gazebo/wall_follower.hpp"
+#include "wall_follower_tests.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -10,10 +10,18 @@
 #include <string>
 #include <vector>
 
-const double Pi = 3.14159265358979323846;
+
+const double CWallFollowerTests::Pi = 3.14159265358979323846;
+const double CWallFollowerTests::StepSeconds = 0.05;  // 20 Hz control.
+const double CWallFollowerTests::MinimumRange = 0.12;
+const double CWallFollowerTests::MaximumRange = 3.5;
+const double CWallFollowerTests::WallHalfThickness = 0.05;
+const double CWallFollowerTests::MinimumSafeClearance = 0.18;
+const int CWallFollowerTests::LaserSamples = 360;
+const int CWallFollowerTests::MaximumSteps = 18000;  // 900 simulated seconds.
 
 // Report a failed check without exception handling.
-bool Require(bool aCondition, const std::string& aMessage)
+bool CWallFollowerTests::Require(bool aCondition, const std::string& aMessage)
 {
     if (!aCondition)
     {
@@ -23,9 +31,9 @@ bool Require(bool aCondition, const std::string& aMessage)
     return aCondition;
 }
 
-std::vector<float> Scan(double aRight, double aFront = 3.5, int aSamples = 360)
+std::vector<float> CWallFollowerTests::Scan(double aRight, double aFront, int aSamples)
 {
-    std::vector<float> Ranges(static_cast<std::size_t>(aSamples), 3.5f);
+    std::vector<float> Ranges(static_cast<std::size_t>(aSamples), static_cast<float>(MaximumRange));
 
     for (int Index = 0; Index < aSamples; ++Index)
     {
@@ -34,7 +42,7 @@ std::vector<float> Scan(double aRight, double aFront = 3.5, int aSamples = 360)
         if (Angle < 0.0)
         {
             Ranges[static_cast<std::size_t>(Index)] = static_cast<float>(
-                std::min(3.5, aRight / -std::sin(Angle)));
+                std::min(MaximumRange, aRight / -std::sin(Angle)));
         }
 
         if (std::abs(Angle) < Pi / 8.0)
@@ -46,129 +54,121 @@ std::vector<float> Scan(double aRight, double aFront = 3.5, int aSamples = 360)
     return Ranges;
 }
 
-void Feed(CScanReader& aReader, const std::vector<float>& aRanges)
+void CWallFollowerTests::Feed(CScanReader& aReader, const std::vector<float>& aRanges)
 {
     aReader.Update(aRanges, -Pi, 2.0 * Pi / static_cast<double>(aRanges.size()),
-        0.12, 3.5);
+        MinimumRange, MaximumRange);
 }
 
-bool CheckSteering()
+bool CWallFollowerTests::CheckSteering() const
 {
+    bool Result = true;
     CWallFollower Follower(CWallFollower::Settings{});
     CScanReader Reader;
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Motion before first scan"))
-    {
-        return false;
-    }
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Motion before first scan") && Result;
     Feed(Reader, Scan(0.35));
     auto Command = Follower.CalculateCommand(Reader, 0.0);
-    if (!Require(Command.Linear > 0.0 && std::abs(Command.Angular) < 0.03,
-        "Aligned wall should allow forward motion"))
-    {
-        return false;
-    }
+    Result = Require(Command.Linear > 0.0 && std::abs(Command.Angular) < 0.03,
+        "Aligned wall should allow forward motion") && Result;
     Feed(Reader, Scan(0.20));
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Angular > 0.0, "Too close should turn left"))
-    {
-        return false;
-    }
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Angular > 0.0, "Too close should turn left") && Result;
     Feed(Reader, Scan(0.60));
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Angular < 0.0, "Too far should turn right"))
-    {
-        return false;
-    }
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Angular < 0.0, "Too far should turn right") && Result;
     Feed(Reader, Scan(0.35, 0.25));
     Command = Follower.CalculateCommand(Reader, 0.0);
-    if (!Require(Command.Linear == 0.0 && Command.Angular > 0.0, "Blocked front should turn in place"))
-    {
-        return false;
-    }
+    Result = Require(Command.Linear == 0.0 && Command.Angular > 0.0, "Blocked front should turn in place") && Result;
     Feed(Reader, Scan(0.35, 0.45));
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Corner hysteresis failed"))
-    {
-        return false;
-    }
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Corner hysteresis failed") && Result;
     Feed(Reader, Scan(0.35, 0.60));
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Linear > 0.0, "Corner turn should release"))
-    {
-        return false;
-    }
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear > 0.0, "Corner turn should release") && Result;
     Feed(Reader, Scan(3.5));
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Angular < 0.0, "Lost wall should turn right"))
-    {
-        return false;
-    }
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Angular < 0.0, "Lost wall should turn right") && Result;
     Command = Follower.CalculateCommand(Reader, 0.51);
-    if (!Require(Command.Linear == 0.0 && Command.Angular == 0.0, "Stale scan should stop"))
+    Result = Require(Command.Linear == 0.0 && Command.Angular == 0.0, "Stale scan should stop") && Result;
+    if (Result)
     {
-        return false;
+        std::cout << "PASS: steering, front hysteresis and wall loss\n";
     }
-    Feed(Reader, std::vector<float>(360, std::numeric_limits<float>::quiet_NaN()));
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "NaN scan should stop"))
-    {
-        return false;
-    }
-    Feed(Reader, std::vector<float>(360, -std::numeric_limits<float>::infinity()));
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Negative infinity should stop"))
-    {
-        return false;
-    }
-    Feed(Reader, std::vector<float>(360, std::numeric_limits<float>::infinity()));
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Angular < 0.0, "Positive infinity should mean clear space"))
-    {
-        return false;
-    }
+    return Result;
+}
+
+bool CWallFollowerTests::CheckScanValidation() const
+{
+    bool Result = true;
+    CWallFollower Follower(CWallFollower::Settings{});
+    CScanReader Reader;
+    Feed(Reader, std::vector<float>(LaserSamples, std::numeric_limits<float>::quiet_NaN()));
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "NaN scan should stop") && Result;
+    Feed(Reader, std::vector<float>(LaserSamples, -std::numeric_limits<float>::infinity()));
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Negative infinity should stop") && Result;
+    Feed(Reader, std::vector<float>(LaserSamples, std::numeric_limits<float>::infinity()));
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Angular < 0.0, "Positive infinity should mean clear space") && Result;
     Feed(Reader, Scan(0.35, 3.5, 720));
-    if (!Require(std::abs(Follower.CalculateCommand(Reader, 0.0).Angular) < 0.03, "720-sample scan failed"))
-    {
-        return false;
-    }
+    Result = Require(std::abs(Follower.CalculateCommand(Reader, 0.0).Angular) < 0.03, "720-sample scan failed") && Result;
     auto Wrapped = Scan(0.20);
-    std::rotate(Wrapped.begin(), Wrapped.begin() + 180, Wrapped.end());
-    Reader.Update(Wrapped, 0.0, 2.0 * Pi / 360.0, 0.12, 3.5);
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Angular > 0.0, "0-to-2pi angle wrapping failed"))
+    std::rotate(Wrapped.begin(), Wrapped.begin() + LaserSamples / 2, Wrapped.end());
+    Reader.Update(Wrapped, 0.0, 2.0 * Pi / LaserSamples, MinimumRange, MaximumRange);
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Angular > 0.0, "0-to-2pi angle wrapping failed") && Result;
+    Reader.Update(Wrapped, 0.0, 0.0, MinimumRange, MaximumRange);
+    Result = Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Invalid scan metadata should stop") && Result;
+    if (Result)
     {
-        return false;
+        std::cout << "PASS: range validation, metadata, resolutions and angle wrapping\n";
     }
-    Reader.Update(Wrapped, 0.0, 0.0, 0.12, 3.5);
-    if (!Require(Follower.CalculateCommand(Reader, 0.0).Linear == 0.0, "Invalid scan metadata should stop"))
-    {
-        return false;
-    }
+    return Result;
+}
+
+bool CWallFollowerTests::CheckInputStatus() const
+{
+    bool Result = true;
+    CWallFollower Follower(CWallFollower::Settings{});
+    CScanReader Reader;
+    CWallFollower::Command Command;
     CWallFollower::Settings Settings;
     Settings.WallDistance = -1.0;
     CWallFollower Invalid(Settings);
     Feed(Reader, Scan(0.35));
     Command = Invalid.CalculateCommand(Reader, 0.0);
-    if (!Require(!Invalid.HasValidSettings(), "Invalid settings were accepted"))
+    Result = Require(!Invalid.HasValidSettings(), "Invalid settings were accepted") && Result;
+    Result = Require(Command.Linear == 0.0 && Command.Angular == 0.0,
+        "Invalid settings should disable motion") && Result;
+    Feed(Reader, Scan(0.35));
+    Result = Require(Follower.CheckInput(Reader, 0.5) == CWallFollower::Ready,
+        "Scan at the timeout boundary should be usable") && Result;
+    Result = Require(Follower.CheckInput(Reader, 0.51) == CWallFollower::StaleScan,
+        "Stale scan status should explain the stop") && Result;
+    const std::vector<double> InvalidAges = {
+        -0.01, std::numeric_limits<double>::quiet_NaN(),
+        std::numeric_limits<double>::infinity()
+    };
+    for (const auto Age : InvalidAges)
     {
-        return false;
+        Command = Follower.CalculateCommand(Reader, Age);
+        Result = Require(Follower.CheckInput(Reader, Age) == CWallFollower::InvalidScanTime
+            && Command.Linear == 0.0 && Command.Angular == 0.0,
+            "Invalid scan age must report the reason and stop") && Result;
     }
-    if (!Require(Command.Linear == 0.0 && Command.Angular == 0.0,
-        "Invalid settings should disable motion"))
+    Result = Require(Invalid.CheckInput(Reader, 0.0) == CWallFollower::InvalidSettings,
+        "Invalid settings status should explain the stop") && Result;
+    Reader.Update({}, 0.0, 0.0, MinimumRange, MaximumRange);
+    Result = Require(Follower.CheckInput(Reader, 0.0) == CWallFollower::InvalidScan,
+        "Invalid scan status should explain the stop") && Result;
+    if (Result)
     {
-        return false;
+        std::cout << "PASS: validation status, timeout boundary and invalid scan ages\n";
     }
-    std::cout << "PASS: steering, corners, sensor validation, timeout and angle wrapping\n";
-    return true;
+    return Result;
 }
 
-struct Segment
-{
-    double X1;
-    double Y1;
-    double X2;
-    double Y2;
-};
 
-double RayDistance(double aX, double aY, double aAngle, const Segment& aWall)
+double CWallFollowerTests::RayDistance(double aX, double aY, double aAngle, const Segment& aWall)
 {
     const double Dx = std::cos(aAngle);
     const double Dy = std::sin(aAngle);
     const double Wx = aWall.X2 - aWall.X1;
     const double Wy = aWall.Y2 - aWall.Y1;
     const double Denominator = Dx * Wy - Dy * Wx;
-    double Distance = 3.5;
+    double Distance = MaximumRange;
 
     if (std::abs(Denominator) > 1e-9)
     {
@@ -186,7 +186,7 @@ double RayDistance(double aX, double aY, double aAngle, const Segment& aWall)
     return Distance;
 }
 
-double Clearance(double aX, double aY, const Segment& aWall)
+double CWallFollowerTests::Clearance(double aX, double aY, const Segment& aWall)
 {
     const double Wx = aWall.X2 - aWall.X1;
     const double Wy = aWall.Y2 - aWall.Y1;
@@ -195,8 +195,9 @@ double Clearance(double aX, double aY, const Segment& aWall)
     return std::hypot(aX - aWall.X1 - U * Wx, aY - aWall.Y1 - U * Wy);
 }
 
-bool CheckMaze(bool aModelSensor)
+bool CWallFollowerTests::CheckMaze(const SensorProfile& aProfile) const
 {
+    bool Result = true;
     // Same wall centrelines as the supplied Gazebo maze. No route is given to the controller.
     const std::vector<Segment> Walls = {
         {-3.0, -3.0, 3.0, -3.0}, {-3.0, -3.0, -3.0, 3.0},
@@ -210,88 +211,102 @@ bool CheckMaze(bool aModelSensor)
     double X = -2.4;
     double Y = -2.55;
     double Heading = 0.0;
-    double MinimumClearance = 3.5;
-    const double StepSeconds = 0.05;
+    double MinimumClearance = MaximumRange;
     bool ReachedExit = false;
     std::mt19937 Random(42);
     std::normal_distribution<double> Noise(0.0, 0.01);
 
-    for (int Step = 0; Step < 18000 && !ReachedExit; ++Step)
+    for (int Step = 0; Step < MaximumSteps && !ReachedExit && Result; ++Step)
     {
-        if (!aModelSensor || Step % 2 == 0)
+        if (Step % aProfile.ScanEverySteps == 0)
         {
-            std::vector<float> Ranges(360, 3.5f);
-            const double SensorX = X - (aModelSensor ? 0.064 * std::cos(Heading) : 0.0);
-            const double SensorY = Y - (aModelSensor ? 0.064 * std::sin(Heading) : 0.0);
-            const double AngleMin = aModelSensor ? 0.0 : -Pi;
-            const double AngleIncrement = aModelSensor ? 6.28 / 359.0 : 2.0 * Pi / 360.0;
+            std::vector<float> Ranges(LaserSamples, static_cast<float>(MaximumRange));
+            const double SensorX = X + aProfile.OffsetX * std::cos(Heading);
+            const double SensorY = Y + aProfile.OffsetX * std::sin(Heading);
+            const double AngleMin = aProfile.Noisy ? 0.0 : -Pi;
+            const double AngleIncrement = aProfile.Noisy ? 6.28 / (LaserSamples - 1) : 2.0 * Pi / LaserSamples;
 
-            for (int Index = 0; Index < 360; ++Index)
+            for (int Index = 0; Index < LaserSamples; ++Index)
             {
                 const double Angle = Heading + AngleMin + AngleIncrement * Index;
-                double Distance = 3.5;
+                double Distance = MaximumRange;
 
                 for (const auto& Wall : Walls)
                 {
                     // Approximate 0.1 m wall thickness along the ray.
-                    Distance = std::min(Distance, std::max(0.12,
-                        RayDistance(SensorX, SensorY, Angle, Wall) - 0.05));
+                    Distance = std::min(Distance, std::max(MinimumRange,
+                        RayDistance(SensorX, SensorY, Angle, Wall) - WallHalfThickness));
                 }
 
-                if (aModelSensor)
+                if (aProfile.Noisy)
                 {
-                    Distance = std::min(3.5, std::max(0.12, Distance + Noise(Random)));
+                    Distance = std::min(MaximumRange, std::max(MinimumRange, Distance + Noise(Random)));
                 }
 
                 Ranges[static_cast<std::size_t>(Index)] = static_cast<float>(Distance);
             }
 
-            Reader.Update(Ranges, AngleMin, AngleIncrement, 0.12, 3.5);
+            Reader.Update(Ranges, AngleMin, AngleIncrement, MinimumRange, MaximumRange);
         }
 
-        const auto Command = Follower.CalculateCommand(Reader, aModelSensor && Step % 2 != 0
-            ? StepSeconds : 0.0);
+        const auto Command = Follower.CalculateCommand(Reader, (Step % aProfile.ScanEverySteps) * StepSeconds);
         Heading += Command.Angular * StepSeconds;
         X += Command.Linear * std::cos(Heading) * StepSeconds;
         Y += Command.Linear * std::sin(Heading) * StepSeconds;
 
         for (const auto& Wall : Walls)
         {
-            MinimumClearance = std::min(MinimumClearance, Clearance(X, Y, Wall) - 0.05);
+            MinimumClearance = std::min(MinimumClearance, Clearance(X, Y, Wall) - WallHalfThickness);
         }
 
-        if (MinimumClearance <= 0.18)
+        if (MinimumClearance <= MinimumSafeClearance)
         {
             std::cerr << "Collision at step " << Step << ": " << X << ", " << Y
                 << ", heading " << Heading << ", command " << Command.Linear
                 << ", " << Command.Angular << '\n';
         }
 
-        if (!Require(MinimumClearance > 0.18, "Idealised maze collision"))
-        {
-            return false;
-        }
+        Result = Require(MinimumClearance > MinimumSafeClearance, "Idealised maze collision") && Result;
         ReachedExit = X > 4.0 && Y > 1.6 && Y < 2.6;
     }
 
     std::cout << "Maze final position: " << X << ", " << Y
         << "; minimum clearance: " << MinimumClearance << " m\n";
-    if (!Require(ReachedExit, "Idealised maze exit was not reached within 900 simulated seconds"))
+    Result = Require(ReachedExit, "Idealised maze exit was not reached within 900 simulated seconds") && Result;
+    if (Result)
     {
-        return false;
+        std::cout << "PASS: sensor-driven S-maze traversal (" << aProfile.Name
+            << ", " << 1.0 / (StepSeconds * aProfile.ScanEverySteps) << " Hz"
+            << ", sensor x = " << aProfile.OffsetX << " m; development test only)\n";
     }
-    std::cout << "PASS: sensor-driven S-maze traversal ("
-        << (aModelSensor ? "mounted laser, 10 Hz, seeded noise" : "idealised model")
-        << "; development test only)\n";
-    return true;
+    return Result;
+}
+
+// Retain the previous platform profile and add the selected Burger configuration.
+int CWallFollowerTests::Run() const
+{
+    const std::vector<SensorProfile> Profiles = {
+        {"idealised readings", 1, 0.0, false},
+        {"Waffle Pi, seeded noise", 2, -0.064, true},  // 10 Hz laser.
+        {"Burger camera, seeded noise", 4, -0.032, true}  // 5 Hz laser.
+    };
+    bool Passed = CheckSteering();
+    Passed = CheckScanValidation() && Passed;
+    Passed = CheckInputStatus() && Passed;
+    for (const auto& Profile : Profiles)
+    {
+        Passed = CheckMaze(Profile) && Passed;
+    }
+    int Result = 0;
+    if (!Passed)
+    {
+        Result = 1;
+    }
+    return Result;
 }
 
 int main()
 {
-    if (!CheckSteering() || !CheckMaze(false) || !CheckMaze(true))
-    {
-        return 1;
-    }
-
-    return 0;
+    CWallFollowerTests Tests;
+    return Tests.Run();
 }

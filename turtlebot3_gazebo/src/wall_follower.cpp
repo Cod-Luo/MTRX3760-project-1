@@ -46,7 +46,7 @@ CWallFollower::Command CWallFollower::CalculateCommand(
 {
     Command Result;  // Stop unless it is safe to drive.
 
-    if (CanDrive(aScan, aScanAgeSeconds))
+    if (CheckInput(aScan, aScanAgeSeconds) == Ready)
     {
         UpdateFrontBlocked(aScan.FrontDistance());
 
@@ -67,13 +67,27 @@ CWallFollower::Command CWallFollower::CalculateCommand(
     return Result;
 }
 
-bool CWallFollower::CanDrive(const CScanReader& aScan, double aScanAgeSeconds) const
+CWallFollower::DriveStatus CWallFollower::CheckInput(
+    const CScanReader& aScan, double aScanAgeSeconds) const
 {
-    return mSettings.IsValid()
-        && aScan.HasValidReadings()
-        && std::isfinite(aScanAgeSeconds)
-        && aScanAgeSeconds >= 0.0
-        && aScanAgeSeconds <= ScanTimeout;
+    DriveStatus Result = Ready;
+    if (!mSettings.IsValid())
+    {
+        Result = InvalidSettings;
+    }
+    else if (!aScan.HasValidReadings())
+    {
+        Result = InvalidScan;
+    }
+    else if (!std::isfinite(aScanAgeSeconds) || aScanAgeSeconds < 0.0)
+    {
+        Result = InvalidScanTime;
+    }
+    else if (aScanAgeSeconds > ScanTimeout)
+    {
+        Result = StaleScan;
+    }
+    return Result;
 }
 
 void CWallFollower::UpdateFrontBlocked(double aFrontDistance)

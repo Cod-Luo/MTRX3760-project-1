@@ -3,11 +3,14 @@
 This is a local checkout of the official ROBOTIS TurtleBot3 simulations Jazzy branch.
 The initial upstream commit is `45633014a14e8f438495b532a723e4ad45cbbd31`.
 The assignment's `turtlebot3_drive.cpp` was modified in place for A1, then split into
-classes during the A3 refactor (see Code structure). This snapshot is prepared
-for the group's `Royce` branch, with author name `royce` and a GitHub no-reply email.
-The existing group setup history is preserved; team code review still remains.
+classes during the A3 refactor (see Code structure). Current work is on the group's
+`A3-refactor` branch. The existing group setup history is preserved.
 
-## Current status
+## Development history and current status
+
+The dated October 5 runs below used the previous Waffle Pi configuration. They are
+historical evidence, not runs of the current Burger refactor. See `COURSE_ALIGNMENT.md`
+for the October 9 code-quality changes and their verification.
 
 - Right-wall-following C++ controller implemented.
 - Windows development tests pass, including a sensor-driven traversal of an idealised S-maze.
@@ -28,10 +31,12 @@ The existing group setup history is preserved; team code review still remains.
   with unchanged steering settings (79.4 s, 100.4 s and 129.0 s respectively).
 - A1 report assembly/captions, team review and A2 physical testing remain.
 
-The native Windows ray-cast tests check controller logic. One uses ideal readings;
-another includes the supplied model's laser mounting offset, 10 Hz sampling and
-seeded 0.01 m Gaussian noise. Both omit Gazebo physics, actuator dynamics and ROS communication. Their success
-is not evidence for A1. It identified and helped fix an overly tight outside-corner turn.
+The native Windows ray-cast tests check controller logic with three explicit profiles:
+ideal readings at the 20 Hz control rate, the earlier Waffle Pi (10 Hz laser, -0.064 m
+sensor x offset), and the selected Burger camera model (5 Hz laser, -0.032 m offset).
+Mounted profiles use seeded 0.01 m Gaussian noise. Scan age advances between updates
+according to each profile. These tests omit Gazebo physics, actuator dynamics and
+ROS communication; their success is not evidence for A1.
 
 ## Code structure
 
@@ -46,7 +51,7 @@ After the A3 refactor each class has one job (headers in
 | `CVelocityPublisher` | `velocity_publisher` | Sends timestamped commands on `cmd_vel` as `TwistStamped`. |
 | `CPathRecorder` | `path_recorder` | Records odometry as an RViz path. Not used for control. |
 
-`main.cpp` only starts the node. The executable is still called `turtlebot3_drive`.
+`main.cpp` owns ROS startup and shutdown. The executable is still called `turtlebot3_drive`.
 `CScanReader` and `CWallFollower` do not depend on ROS, so the unit tests use them
 directly. `CScanReader` reads angular sectors rather than assuming that sample indices
 equal degrees, so it works on both the 360-sample simulated lidar and the real LD19
@@ -57,6 +62,16 @@ up to five path samples per simulated second. The independent steady-clock senso
 receipt watchdog remains, alongside the ROS timestamp-age check. Steering settings
 and the original S-maze geometry are unchanged.
 
+The node reports invalid settings, invalid scans, invalid timestamps, stale scans
+and recovery once per state change. These runtime checks remain active in release
+builds. The initial waiting-for-laser message explains why startup produces zero velocity.
+
+All control callbacks execute on the main thread. ROS's default context receives
+Ctrl+C/SIGTERM; the node uses a separate context kept alive until its loop ends and
+sends zero velocity. Only then does main shut down the control context. There is no
+authored mutex or cross-thread publishing hook. A bounded reliable-subscriber
+acknowledgement wait helps delivery, but cannot prove that physical wheels stopped.
+
 The controller follows a wall on its right, turns left when the front is blocked,
 and curves right when it loses the wall. Invalid or stale scans stop motion.
 It receives no waypoints or maze geometry. The maze assumes a wall beside the start
@@ -64,21 +79,24 @@ and has no floating rooms. The drive controller does not detect the exit: the se
 validation harness observes Gazebo's model position, pauses the world at the exit and
 stops its own drive process. Ground truth and maze coordinates are never sent to the controller.
 
-The supplied Jazzy bridge and physical robot use `TwistStamped`; the controller
-always publishes this message type on `cmd_vel`.
-Physical robot operation still requires tuning and live tests.
+The supplied Jazzy simulation bridge expects `TwistStamped`; the controller publishes
+this type on `cmd_vel`. Before physical operation, check the actual robot with
+`ros2 topic info /cmd_vel --verbose`. Physical operation still requires tuning and live tests.
 
 ## Run development tests now (PowerShell)
 
+Run from the root of this `A3-refactor` checkout, not an older `Project1` copy:
+
 ```powershell
-& '.\Project1\scripts\test-windows.ps1'
+& '.\scripts\test-windows.ps1'
 ```
 
 The test executable is ignored by Git. Tests cover steering signs, front-obstacle
 hysteresis, wall loss, missing/invalid/stale scans, scan angle wrapping, different scan
 resolutions and invalid settings. The closed-loop tests ray-cast the supplied maze's
 wall centrelines and check exit traversal plus collision clearance. Observed minimum
-centre-to-wall clearance was 0.259 m (ideal readings) and 0.269 m (model sensor settings).
+centre-to-wall clearance was 0.259 m (ideal readings), 0.269 m (Waffle profile) and
+0.272 m (Burger profile). This simplified clearance is not a full-footprint certificate.
 
 ## Installed environment
 
@@ -103,20 +121,37 @@ Use the checkout on the Windows drive as the source, but keep build outputs on t
 Linux filesystem for better performance:
 
 ```bash
-cd '/mnt/c/Users/royce/Desktop/USYD MTRX3760/Project1'
+cd /path/to/MTRX3760-project-1  # Replace with your A3-refactor checkout.
 bash scripts/build-ubuntu.sh
 ```
 
-The workspace is `/home/royce/project1_ws`. The script builds the actual ROS node,
-runs CTest and reports its JUnit result. To rerun only the installed build's tests,
-use `bash scripts/test-ubuntu.sh`. A Windows test alone is not a ROS build.
+The default workspace is `$HOME/project1_ws`. For a separate workspace, set the same
+environment variable in every terminal used for this checkout:
+
+```bash
+export PROJECT1_WORKSPACE="$HOME/project1_a3_ws"
+bash scripts/build-ubuntu.sh
+bash scripts/run-ros.sh ros2 pkg prefix turtlebot3_gazebo
+```
+
+Build, test and runtime scripts share this setting through `scripts/workspace.sh`.
+The build script still accepts a workspace argument, but that argument affects only
+that invocation; export `PROJECT1_WORKSPACE` for subsequent runtime commands.
+The runtime wrapper prints the package prefix and rejects workspaces built from
+another checkout. Rebuild after source edits; the wrapper is not an automatic builder.
+
+The script builds the actual ROS node, runs CTest and reports its JUnit result. It also
+runs synthetic-scan ROS tests for diagnostics, recovery and final stop delivery under
+SIGINT/SIGTERM. To rerun the installed build's tests, use `bash scripts/test-ubuntu.sh`.
+Run non-ROS script/metadata checks with `bash scripts/test-scripts.sh`.
+A Windows test alone is not a ROS build.
 
 ## Launch the A1 simulation
 
 In an Ubuntu terminal:
 
 ```bash
-cd '/mnt/c/Users/royce/Desktop/USYD MTRX3760/Project1'
+cd /path/to/MTRX3760-project-1  # Replace with your A3-refactor checkout.
 bash scripts/run-ros.sh ros2 launch turtlebot3_gazebo project1_maze.launch.py
 ```
 

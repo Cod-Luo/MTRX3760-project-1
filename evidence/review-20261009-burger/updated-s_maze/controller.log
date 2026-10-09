@@ -1,0 +1,5 @@
+[WARN] [1791522533.065427705] [rclcpp]: logging was initialized more than once
+[INFO] [1791522533.091323098] [turtlebot3_drive_node]: Right-wall follower ready; waiting for laser data
+[INFO] [1791522533.423155489] [turtlebot3_drive_node]: Usable laser data received; motion enabled
+[INFO] [1791522698.953962908] [rclcpp]: signal_handler(SIGINT/SIGTERM)
+[INFO] [1791522698.961120482] [turtlebot3_drive_node]: Shutting down: stop command sent

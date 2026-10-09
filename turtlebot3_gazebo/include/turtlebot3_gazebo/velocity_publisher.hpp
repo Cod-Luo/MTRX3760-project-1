@@ -18,6 +18,9 @@ class CVelocityPublisher
         // Sends one command: metres/second forward, radians/second turning left.
         void Publish(double aLinear, double aAngular);
 
+        // Sends zero velocity and gives reliable subscribers time to acknowledge it.
+        void Stop();
+
     private:
         rclcpp::Node& mNode;  // Knows the node for timestamps; does not own it.
 
@@ -26,6 +29,7 @@ class CVelocityPublisher
         static const std::string Topic;
         static const std::string FrameId;  // Robot body frame the velocity applies to.
         static const int QueueDepth;
+        static const int StopWaitMilliseconds;
 };
 
 #endif
